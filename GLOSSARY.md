@@ -60,6 +60,14 @@ _Avoid_: Log, play, check-in, journal entry
 A dated journal entry with its own notes, media and Participants. It may stand alone or contain the Sessions that happened during it, such as a brewery day or a game night.
 _Avoid_: Event, outing, gathering, day
 
+**Open Occasion**:
+The one Occasion a User has started and not yet ended, which new Sessions join by default.
+_Avoid_: Active Occasion, current Occasion, live Occasion
+
+**Journal**:
+The timeline of a User's own Occasions and Sessions, with their notes and media. It's a view, not something you create.
+_Avoid_: Diary, feed, log
+
 **Participant**:
 A person present in a Session or Occasion, either a User or a Guest. In a Session, each Participant may record their own Ratings, Observations and Scores.
 _Avoid_: Player, attendee
