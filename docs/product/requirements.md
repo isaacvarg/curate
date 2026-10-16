@@ -40,7 +40,7 @@ Testable requirements derived from the design session. Terms in **bold** are def
 - **FR-3.3** (v1) Ratings, Observations and Scores in a Session are recorded per Participant.
 - **FR-3.4** (v1) One device can enter every Participant's values.
 - **FR-3.5** (v1) Notes and media can attach to an Occasion, a Session, or a Participant within a Session.
-- **FR-3.6** (v1) Media types: photo, video, voice memo. The system records the total media size per User.
+- **FR-3.6** (v1) Media types: photo, video (up to 2 minutes), voice memo (up to 10 minutes). Media is processed on the phone and uploaded separately from the Session or Occasion it belongs to ([ADR 0008](../adr/0008-media-uploaded-separately-and-processed-on-device.md)). The system records the total media size per User.
 - **FR-3.7** (v1) In a shared Collection, any **Collection Member** can edit a Session's shared parts (date, Participants, Scores, Session notes). Per-person Ratings and Observations are editable only by the person they belong to.
 - **FR-3.8** (Social) A Session appears in the history of every User Participant, with an offer to create a Linked Item in their own Collection.
 - **FR-3.9** (Social) A User Participant can edit their own Ratings, Observations and notes, and can enter their own Score column from their own device.

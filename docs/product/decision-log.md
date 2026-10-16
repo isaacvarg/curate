@@ -71,7 +71,7 @@ Original notebook features:
 | 4.4 | Score Card calculator design | **Parked as P1**, because the user prefers node-based editors. Resolved in round 7. | |
 | 4.5 | Comparison model | The user asked for it to be spelled out. Resolved in 5.1. | |
 | 4.6 | Bulk-creating child Items? | **v1: manual creation plus bulk generation** ("Season 2: 10 Episodes"). Importing from outside catalogs (TMDB, BGG, Open Library) comes later. | Bulk generation is cheap and works for every Collection. Each outside catalog is its own integration project. |
-| 4.7 | Offline support? | **v1: logging queues offline** (Sessions and media are saved locally and synced later). Full offline-first browsing and editing is not in v1. | Logging is the moment that can't fail. Full offline sync is a major architectural commitment. |
+| 4.7 | Offline support? | **v1: logging queues offline** (Sessions and media are saved locally and synced later). Full offline-first browsing and editing is not in v1. | Logging is the moment that can't fail. Full offline sync is a major architectural commitment. Refined in slice 6: media queues as its own uploads, separate from the Session save. See [ADR 0008](../adr/0008-media-uploaded-separately-and-processed-on-device.md). |
 | 4.8 | Monorepo layout? | **pnpm workspaces:** `apps/web` (Next.js + Prisma, API + web), `apps/mobile` (Expo), `packages/shared`. Docker Compose for Postgres and rustfs stays at the root. Typed RPC between the apps. | See [ADR 0001](../adr/0001-expo-and-nextjs-monorepo.md). |
 
 ### Addendum A (raised by the user during round 4)

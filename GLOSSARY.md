@@ -68,6 +68,10 @@ _Avoid_: Active Occasion, current Occasion, live Occasion
 The timeline of a User's own Occasions and Sessions, with their notes and media. It's a view, not something you create.
 _Avoid_: Diary, feed, log
 
+**Media**:
+A photo, video or voice memo attached to an Occasion, a Session, or a Participant within a Session.
+_Avoid_: Attachment, file, asset, upload
+
 **Participant**:
 A person present in a Session or Occasion, either a User or a Guest. In a Session, each Participant may record their own Ratings, Observations and Scores.
 _Avoid_: Player, attendee
