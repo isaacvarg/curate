@@ -121,7 +121,7 @@ Testable requirements derived from the design session. Terms in **bold** are def
 
 - **NFR-1 Platform.** Mobile for iOS and Android via Expo. Web via Next.js. pnpm monorepo with `apps/mobile`, `apps/web` and `packages/shared` ([ADR 0001](../adr/0001-expo-and-nextjs-monorepo.md)).
 - **NFR-2 Server stack.** Postgres via Prisma, used only from `apps/web`. rustfs for media storage. Local infrastructure through Docker Compose at the repo root.
-- **NFR-3 API.** Mobile talks to the server only through a typed RPC API. It never touches the database directly.
+- **NFR-3 API.** Mobile talks to the server only through the typed oRPC API. It never touches the database directly. Accounts use Better Auth ([ADR 0005](../adr/0005-orpc-and-better-auth.md)).
 - **NFR-4 Offline logging.** Creating Sessions (including Score Card entry, ratings and media capture) works with no connection. Queued changes sync automatically when the connection returns, without data loss.
 - **NFR-5 Shared logic.** Expression evaluation, Verdict normalization and condition logic live in `packages/shared` and give identical results on every client and the server.
 - **NFR-6 Privacy by default.** New Occasions and locations are private. Guest names are never public. Location is never captured without a user action.

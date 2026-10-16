@@ -19,3 +19,4 @@ Output of the product design session (2026-10-14 → 2026-10-16). Start here.
 | [0002](../adr/0002-one-expression-model.md) | One expression model for scores, Verdicts, conditions and Challenges |
 | [0003](../adr/0003-one-home-collection-per-item.md) | Every Item has one home Collection; cross-Collection presence uses Linked Items |
 | [0004](../adr/0004-verdict-and-comparison-tiers.md) | Comparison through a required Verdict, Shared Fields, and percentile |
+| [0005](../adr/0005-orpc-and-better-auth.md) | oRPC for the API, Better Auth for accounts |
