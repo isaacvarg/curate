@@ -70,10 +70,10 @@ Testable requirements derived from the design session. Terms in **bold** are def
 
 ## 6. Labels
 
-- **FR-6.1** (v1) Each Item can generate a **Label** whose QR code encodes a stable https URL identifying that Item.
+- **FR-6.1** (v1) Each Item can generate a **Label** whose QR code encodes a stable https URL identifying that Item: an opaque code on a product-neutral Label domain ([ADR 0009](../adr/0009-labels-encode-an-opaque-code-on-a-neutral-domain.md)).
 - **FR-6.2** (v1) Each Collection configures the owner's scan action: start a Session (pre-filled with date, open Occasion and usual Participants) or open the Item.
 - **FR-6.3** (v1) Scanning without the app opens a web page. With the app installed, a universal link opens the app.
-- **FR-6.4** (v1) A non-owner sees the public Item page if the Collection's Visibility allows it, otherwise a minimal ownership page.
+- **FR-6.4** (v1) A non-owner sees the public Item page if the Collection's Visibility allows it, otherwise a minimal ownership page. In v1 Collection Visibility is stored as Private only, so everyone else sees the minimal page (Item name, Status, and the owner's name only if they opt in). The public Item page arrives with Visibility in the social phase.
 - **FR-6.5** (v1) Labels are exported as printable PDFs: sticker-sheet grids and ex libris designs.
 - **FR-6.6** (v1) A Label stays tied to its Item for life and shows the Item's current Status.
 - **FR-6.7** (Social) A non-owner User can join or log the Session from their own account.
@@ -126,7 +126,7 @@ Testable requirements derived from the design session. Terms in **bold** are def
 - **NFR-4 Offline logging.** Creating Sessions (including Score Card entry, ratings and media capture) works with no connection. Queued changes sync automatically when the connection returns, without data loss.
 - **NFR-5 Shared logic.** Expression evaluation, Verdict normalization and condition logic live in `packages/shared` and give identical results on every client and the server.
 - **NFR-6 Privacy by default.** New Occasions and locations are private. Guest names are never public. Location is never captured without a user action.
-- **NFR-7 Stable Label URLs.** Label URLs must remain valid for the life of the Item, including after it's Sold, after a Collection Member leaves, and across domain or product renames. Labels are physical and can't be reprinted cheaply.
+- **NFR-7 Stable Label URLs.** Label URLs must remain valid for the life of the Item, including after it's Sold, after a Collection Member leaves, and across domain or product renames. Labels are physical and can't be reprinted cheaply. See [ADR 0009](../adr/0009-labels-encode-an-opaque-code-on-a-neutral-domain.md).
 - **NFR-8 Data ownership.** Users can export everything they've created, in open formats, at any time.
 - **NFR-9 Media accounting.** Media storage is tracked per User so limits can be added later.
 - **NFR-10 Correctness over guessing.** The app never displays a calculated result (score, winner, Verdict, Challenge progress) built from incomplete inputs as if it were final.

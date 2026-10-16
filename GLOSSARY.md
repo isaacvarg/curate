@@ -27,8 +27,12 @@ A descriptive fact about an Item, such as ABV, brewery, player count, or fiction
 _Avoid_: Property, metadata, detail
 
 **Label**:
-A printable QR sticker or ex libris tied permanently to one Item. Scanning it opens that Item or starts a Session for it, depending on the Collection's setting.
+A printable QR sticker or ex libris tied permanently to one Item through an opaque code on a neutral Label domain. Scanning it opens that Item or starts a Session for it, depending on the Collection's Scan Action.
 _Avoid_: Tag, QR code, sticker
+
+**Scan Action**:
+What scanning one of a Collection's Labels does for a Collection Member: open the Item, or start a Session for it pre-filled with today, the Open Occasion and the usual Participants.
+_Avoid_: Scan mode, scan setting
 
 **Catalog Entry**:
 A shared, canonical record of a real-world thing (e.g. "Wingspan") that many users' Items can optionally link to. Users keep control of their own Item regardless of the link.

@@ -103,7 +103,7 @@ Tags were confirmed as ad-hoc, free-form groupings that cut across Collections a
 | 6.5 | What does a Label point to? | **One Item** (not a Catalog Entry). **What scanning does is configurable per Collection**: start a Session (pre-filled with date, open Occasion, usual Participants) or open the Item. | User's refinement: some Collections want logging, others want lookup. |
 | 6.6 | Someone else scans your Label? | **v1:** the public Item page if the Collection is shared, otherwise a minimal "this belongs to …" page. **Social phase:** a User can **join or log the Session from their own account**. | Joining needs accounts, follows and permissions first. |
 | 6.7 | Label formats? | **v1: printable PDFs** (standard sticker-sheet grids plus a few ex libris designs). A configurable Label designer comes later. | |
-| 6.8 | Item leaves your hands? | **The Label stays tied to your Item** and scanning shows its Status (e.g. "Sold"). Transferring a Label comes in the social phase. | Your history shouldn't move because the box did. |
+| 6.8 | Item leaves your hands? | **The Label stays tied to your Item** and scanning shows its Status (e.g. "Sold"). Transferring a Label comes in the social phase. | Your history shouldn't move because the box did. Refined in slice 7: a Label is its own record with an opaque code on a neutral, permanent Label domain. See [ADR 0009](../adr/0009-labels-encode-an-opaque-code-on-a-neutral-domain.md). |
 
 ## Round 7: Social model, metrics, Templates, Catalog
 
