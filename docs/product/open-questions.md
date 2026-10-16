@@ -19,7 +19,7 @@ Things the design session deliberately did **not** settle, so nobody mistakes th
 - **Auth and accounts.** Sign-in methods, account deletion and its effect on shared Collections, Sessions and Linked Items.
 - **Notifications.** What is pushed (Meetup reminders, Challenge progress, follow prompts) and the defaults.
 - **Full offline-first support** beyond queued logging.
-- **Media handling.** Size limits, video length, transcoding, voice memo transcription.
+- **Voice memo transcription.** The rest of media handling (size limits, video length, processing on the phone, no server transcoding) was settled for v1 in slice 6 ([ADR 0008](../adr/0008-media-uploaded-separately-and-processed-on-device.md)).
 
 ## Ideas mentioned but not committed
 

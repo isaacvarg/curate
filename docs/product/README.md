@@ -22,3 +22,4 @@ Output of the product design session (2026-10-14 → 2026-10-16). Start here.
 | [0005](../adr/0005-orpc-and-better-auth.md) | oRPC for the API, Better Auth for accounts |
 | [0006](../adr/0006-score-cards-chosen-per-item.md) | Score Cards are chosen per Item, not configured per Level |
 | [0007](../adr/0007-occasion-links-belong-to-the-user.md) | A Session's place in an Occasion belongs to the Occasion's User |
+| [0008](../adr/0008-media-uploaded-separately-and-processed-on-device.md) | Media is uploaded separately, straight to rustfs, and processed only on the phone |

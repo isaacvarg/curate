@@ -68,7 +68,7 @@ Every feature agreed in the design session, grouped by area and tagged by phase.
 | Group Sessions into an Occasion when logging or afterwards | v1 | A Session belongs to at most one Occasion per User ([ADR 0007](../adr/0007-occasion-links-belong-to-the-user.md)) |
 | An **open Occasion** that new Sessions join by default | v1 | Started and ended explicitly; one per User |
 | Occasion Participants become defaults for its Sessions | v1 | |
-| Notes and media (photos, video, voice memos) on an Occasion, a Session, or a Participant | v1 | |
+| Notes and media (photos, video, voice memos) on an Occasion, a Session, or a Participant | v1 | Processed on the phone, uploaded separately ([ADR 0008](../adr/0008-media-uploaded-separately-and-processed-on-device.md)) |
 | Journal timeline screen | v1 | A view, not an object |
 | "On this day" resurfacing | v1 | |
 | Optional one-tap location, private by default | v1 | Never captured silently |
