@@ -61,11 +61,12 @@ Testable requirements derived from the design session. Terms in **bold** are def
 ## 5. Occasions and journal
 
 - **FR-5.1** (v1) An **Occasion** is a dated entry with optional notes, media, Participants, location and Tags. It may contain zero or more Sessions.
-- **FR-5.2** (v1) A Session belongs to at most one Occasion and can be moved into or out of one at any time.
+- **FR-5.2** (v1) A Session belongs to at most one Occasion per User, and can be moved into or out of one at any time. Grouping is the Occasion owner's, so a shared Session can sit in each person's own Occasion ([ADR 0007](../adr/0007-occasion-links-belong-to-the-user.md)).
 - **FR-5.3** (v1) New Sessions in an Occasion default to the Occasion's Participants.
 - **FR-5.4** (v1) The journal is a timeline view built from Occasions, Sessions and their notes and media.
 - **FR-5.5** (v1) An "On this day" view shows content from the same date in past years.
 - **FR-5.6** (v1) Location is optional. It's suggested, never captured silently, and private by default.
+- **FR-5.7** (v1) A User has at most one **open Occasion**. New Sessions join it by default and start with its Participants. Backdated Occasions are never open.
 
 ## 6. Labels
 
