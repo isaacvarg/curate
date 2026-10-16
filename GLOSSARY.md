@@ -85,7 +85,7 @@ A field recording a game result for a Participant, either entered directly or ca
 _Avoid_: Rating, points
 
 **Score Card**:
-The calculator that turns every Participant's Score fields in a Session into final results and a winner, like a board game's score pad.
+The calculator that turns every Participant's Score fields in a Session into final results and a winner, like a board game's score pad. Each Item uses at most one, chosen from its Collection's Score Cards for that Level.
 _Avoid_: Score sheet, rating form
 
 **Round**:
