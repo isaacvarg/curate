@@ -117,7 +117,7 @@ A field definition with a common identity and a locked scale, minted when an Off
 _Avoid_: Standard field, global field
 
 **Rating Card**:
-A styled, shareable presentation of a rating, where the user chooses which fields and media to show.
+A styled, shareable presentation of one rating (a User's Overall Rating of an Item, or their own values from one Session), where the user chooses which fields and photos to show. It's shared as an image, or as a public link to a frozen snapshot of exactly what the card shows.
 _Avoid_: Share card, Score Card
 
 **Challenge**:

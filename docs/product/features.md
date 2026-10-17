@@ -103,7 +103,8 @@ Every feature agreed in the design session, grouped by area and tagged by phase.
 
 | Feature | Phase | Notes |
 |---|---|---|
-| **Rating Cards**: styled image or public link of a rating, choosing which fields and media to show | v1 | Shareable to any app |
+| **Rating Cards**: styled image or public link of a rating, choosing which fields and media to show | v1 | Shareable to any app. An Overall Rating or one Session; 3 designs × 3 sizes; links are frozen snapshots on the neutral host ([ADR 0014](../adr/0014-rating-card-links-are-allowlisted-snapshots-on-the-neutral-host.md)) |
+| List Rating Cards ("my top 10 games of 2027") | Later | From percentile rankings; reuse the snapshot and link model |
 | Official (curated) **Templates** | v1 | Levels, Attributes, fields, Score Cards, Statuses, scan action. Published from a curator's Collection ([ADR 0011](../adr/0011-templates-are-published-snapshots-adopted-as-copies-with-origin-keys.md)) |
 | Adopting a Template copies it; later updates are offered, never forced | v1 | Offered change by change, keeping your own edits by default. Shared Fields keep their identity until detached |
 | Community Templates with contributor rankings | Later | Can't create Shared Fields |
