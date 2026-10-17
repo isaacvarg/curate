@@ -85,7 +85,7 @@ Testable requirements derived from the design session. Terms in **bold** are def
 - **FR-7.3** (v1) Verdict distribution and top Items by percentile, within and across Collections.
 - **FR-7.4** (v1) Most frequent Observation values.
 - **FR-7.5** (v1) Score Card stats: win rate per Participant, best scores, category averages.
-- **FR-7.6** (v1) Personal **Challenges**: criteria expressions plus a time window, with progress tracking.
+- **FR-7.6** (v1) Personal **Challenges**: a match expression, a measure, a target and a time window, with progress tracking ([ADR 0010](../adr/0010-challenges-are-a-match-expression-plus-a-fixed-measure.md)).
 - **FR-7.7** (Social) Club and Community Challenges.
 
 ## 8. Templates and sharing

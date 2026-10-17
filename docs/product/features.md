@@ -95,7 +95,7 @@ Every feature agreed in the design session, grouped by area and tagged by phase.
 | Verdict distribution; top Items by percentile | v1 | Including across Collections |
 | Most frequent Observations | v1 | e.g. most-detected whisky notes |
 | Score Card stats: win rate, best scores, category averages | v1 | "Play group" stats come from Participants |
-| Personal **Challenges** (criteria + time window) | v1 | Criteria built on the expression model |
+| Personal **Challenges** (criteria + time window) | v1 | A match expression plus a fixed measure ([ADR 0010](../adr/0010-challenges-are-a-match-expression-plus-a-fixed-measure.md)) |
 | Club and Community Challenges | Social | |
 | Custom dashboards | Later | |
 

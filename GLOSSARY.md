@@ -121,7 +121,7 @@ A styled, shareable presentation of a rating, where the user chooses which field
 _Avoid_: Share card, Score Card
 
 **Challenge**:
-A goal with criteria and a time window, measured against Sessions and Items (e.g. "10×10 in 2027", "try 50 tinned fish").
+A goal with criteria and a time window, measured against Sessions and Items (e.g. "10×10 in 2027", "try 50 tinned fish"). Its criteria pick which Sessions count, and a measure counts them toward a target.
 _Avoid_: Quest, goal, achievement
 
 **Template**:
