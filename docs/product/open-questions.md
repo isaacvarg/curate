@@ -14,7 +14,7 @@ Things the design session deliberately did **not** settle, so nobody mistakes th
 - **Community Templates.** Contributor rankings, discovery, quality signals. Publishing reuses the Official path ([ADR 0011](../adr/0011-templates-are-published-snapshots-adopted-as-copies-with-origin-keys.md)). Template update offers were settled in slice 9.
 - **Guest claiming flow.** How a new User proves they are "Sam" on someone else's Sessions.
 - **Catalog Entry matching.** Linking existing Items to Catalog Entries when the Catalog launches (suggestions, bulk matching).
-- **Auth and accounts.** Sign-in methods, account deletion and its effect on shared Collections, Sessions and Linked Items.
+- **Social sign-in.** Sign in with Apple and Google, and linking them to existing email accounts. Email accounts, recovery and deletion were settled in slice 14 ([ADR 0015](../adr/0015-account-deletion-is-a-scheduled-leave-then-a-purge.md)). Deletion's effect on Linked Items and Follows waits for the social phase.
 - **Notifications.** What is pushed (Meetup reminders, Challenge progress, follow prompts) and the defaults.
 - **Full offline-first support** beyond queued logging.
 - **Voice memo transcription.** The rest of media handling (size limits, video length, processing on the phone, no server transcoding) was settled for v1 in slice 6 ([ADR 0008](../adr/0008-media-uploaded-separately-and-processed-on-device.md)).

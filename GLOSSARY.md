@@ -81,7 +81,7 @@ A person present in a Session or Occasion, either a User or a Guest. In a Sessio
 _Avoid_: Player, attendee
 
 **Guest**:
-A named Participant who isn't a User, owned by whoever created it. Its name is visible to its owner and to the Collection Members of Collections where it appears, and they can reuse it. A Guest can later be claimed by a real User.
+A named Participant who isn't a User, owned by whoever created it. Its name is visible to its owner and to the Collection Members of Collections where it appears, and they can reuse it. A Collection Member who leaves, or deletes their account, becomes a Guest in the Sessions the others keep. A Guest can later be claimed by a real User.
 _Avoid_: Anonymous player, friend
 
 **Field Kind**:

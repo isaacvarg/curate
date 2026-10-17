@@ -141,3 +141,15 @@ Every feature agreed in the design session, grouped by area and tagged by phase.
 | Media size tracked per user | v1 | For future pricing |
 | Importers for specific apps (BG Stats, Untappd, Goodreads) | Later | |
 | Full offline-first browsing and editing | Later | |
+
+## 10. Accounts
+
+| Feature | Phase | Notes |
+|---|---|---|
+| Sign up and sign in with email and password | v1 | Better Auth ([ADR 0005](../adr/0005-orpc-and-better-auth.md)) |
+| Email verification | v1 | Needed to publish Rating Card links and create invites. Email is sent through Resend |
+| Password reset by email | v1 | Signs out every device |
+| Change email and password | v1 | Re-enter the password first. Changing the email sends a revert link to the old address |
+| Signed-in devices, with sign out per device | v1 | |
+| Account deletion | v1 | Offers an Export first. Hidden at once, purged after 30 days unless restored. Shared Collections keep the person as a Guest ([ADR 0015](../adr/0015-account-deletion-is-a-scheduled-leave-then-a-purge.md)) |
+| Sign in with Apple and Google | Later | Apple is required on iOS once any other social sign-in is offered |
