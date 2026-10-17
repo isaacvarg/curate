@@ -56,6 +56,10 @@ _Avoid_: Review, score
 The one bottom-line Rating every Overall Rating and Session rating has, on a bounded ordered scale. It is the field compared across Collections and between users.
 _Avoid_: Headline, bottom line, grade, overall score
 
+**Overall Verdict**:
+The Verdict that Overall Ratings of a Level's Items are given in: its name and its scale, set per Level. Session ratings will have a Verdict of their own beside it.
+_Avoid_: Level Verdict, default Verdict
+
 **Session**:
 A logged occurrence of experiencing one Item (a play, a tasting, a read), optionally with child Items used alongside it, such as an expansion. It may carry notes, media, Participants and their Ratings, Observations and Scores.
 _Avoid_: Log, play, check-in, journal entry

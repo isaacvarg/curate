@@ -1,0 +1,8 @@
+{
+  "//": "Vitest's transform can't resolve tsconfig.json's `expo/tsconfig.base` (expo doesn't export it), so tests use this instead; typechecking still uses tsconfig.json.",
+  "compilerOptions": {
+    "strict": true,
+    "jsx": "react-jsx",
+    "paths": { "@/*": ["./src/*"] }
+  }
+}
