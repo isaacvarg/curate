@@ -104,8 +104,8 @@ Every feature agreed in the design session, grouped by area and tagged by phase.
 | Feature | Phase | Notes |
 |---|---|---|
 | **Rating Cards**: styled image or public link of a rating, choosing which fields and media to show | v1 | Shareable to any app |
-| Official (curated) **Templates** | v1 | Levels, Attributes, fields, Score Cards, Statuses, scan action |
-| Adopting a Template copies it; later updates are offered, never forced | v1 | Shared Fields keep their identity |
+| Official (curated) **Templates** | v1 | Levels, Attributes, fields, Score Cards, Statuses, scan action. Published from a curator's Collection ([ADR 0011](../adr/0011-templates-are-published-snapshots-adopted-as-copies-with-origin-keys.md)) |
+| Adopting a Template copies it; later updates are offered, never forced | v1 | Offered change by change, keeping your own edits by default. Shared Fields keep their identity until detached |
 | Community Templates with contributor rankings | Later | Can't create Shared Fields |
 
 ## 8. Social

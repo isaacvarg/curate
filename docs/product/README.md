@@ -25,3 +25,4 @@ Output of the product design session (2026-10-14 → 2026-10-16). Start here.
 | [0008](../adr/0008-media-uploaded-separately-and-processed-on-device.md) | Media is uploaded separately, straight to rustfs, and processed only on the phone |
 | [0009](../adr/0009-labels-encode-an-opaque-code-on-a-neutral-domain.md) | Labels encode an opaque code on a neutral, permanent Label domain |
 | [0010](../adr/0010-challenges-are-a-match-expression-plus-a-fixed-measure.md) | Challenges are a match expression plus a fixed measure |
+| [0011](../adr/0011-templates-are-published-snapshots-adopted-as-copies-with-origin-keys.md) | Templates are published snapshots, adopted as copies with origin keys |

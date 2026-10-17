@@ -30,7 +30,7 @@ Testable requirements derived from the design session. Terms in **bold** are def
 - **FR-2.7** (v1) Each Collection configures which value represents an Item: the Overall Verdict, the Session average, the latest Session, the Participant average, or the average of child Items. Default: Overall Verdict, falling back to the Session average.
 - **FR-2.8** (v1) Every Verdict converts to a 0–1 value. The system can compute any Verdict's percentile among the same User's Items at the same Level in the same Collection.
 - **FR-2.9** (v1) Cross-Collection rankings ("top things this year") use percentile.
-- **FR-2.10** (model) A **Shared Field** has a global identity and a locked scale. Only Official Templates define Shared Fields. Values are comparable between Users only through the same Shared Field.
+- **FR-2.10** (model) A **Shared Field** has a global identity and a locked scale. Only Official Templates define Shared Fields, when they're published ([ADR 0011](../adr/0011-templates-are-published-snapshots-adopted-as-copies-with-origin-keys.md)). Values are comparable between Users only through the same Shared Field.
 - **FR-2.11** (model) Fields defined by Users are never compared between Users.
 
 ## 3. Sessions
@@ -90,9 +90,9 @@ Testable requirements derived from the design session. Terms in **bold** are def
 
 ## 8. Templates and sharing
 
-- **FR-8.1** (v1) Adopting a Template copies its Levels, Attributes, fields, Score Cards, Statuses and scan action into the Collection.
-- **FR-8.2** (v1) Template updates are offered to adopting Collections and never applied automatically.
-- **FR-8.3** (v1) Fields copied from Shared Fields keep their Shared Field identity, and their scale can't be changed.
+- **FR-8.1** (v1) Adopting a Template copies its Levels, Attributes, fields, Score Cards, Statuses and scan action into the Collection, with fresh ids and a recorded origin for each element ([ADR 0011](../adr/0011-templates-are-published-snapshots-adopted-as-copies-with-origin-keys.md)).
+- **FR-8.2** (v1) Template updates are offered to adopting Collections one change at a time, and never applied automatically. A change the user also made is shown side by side, and keeping theirs is the default.
+- **FR-8.3** (v1) Fields copied from Shared Fields keep their Shared Field identity, and their scale can't be changed. The identity is dropped only by an explicit Detach.
 - **FR-8.4** (v1) **Rating Cards**: the User picks which fields and media to include and gets a shareable image and a public web link.
 - **FR-8.5** (Later) Community Templates with contributor rankings. They can use Shared Fields but not create them.
 
