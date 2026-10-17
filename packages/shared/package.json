@@ -1,0 +1,17 @@
+{
+  "name": "@repo/shared",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./product": "./src/product.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@orpc/contract": "1.15.7",
+    "zod": "^4.6.7"
+  }
+}
