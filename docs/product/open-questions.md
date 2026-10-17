@@ -9,7 +9,6 @@ Things the design session deliberately did **not** settle, so nobody mistakes th
 
 ## Not yet designed
 
-- **Rating Card configuration details.** Layout options, branding, what a public Rating Card link page shows.
 - **Feed design.** Which actions create feed posts (Sessions, Overall Ratings, new Items, Occasions) and how they're grouped.
 - **Moderation and reporting** for public content, Communities and Clubs.
 - **Community Templates.** Contributor rankings, discovery, quality signals. Publishing reuses the Official path ([ADR 0011](../adr/0011-templates-are-published-snapshots-adopted-as-copies-with-origin-keys.md)). Template update offers were settled in slice 9.
@@ -23,6 +22,7 @@ Things the design session deliberately did **not** settle, so nobody mistakes th
 ## Ideas mentioned but not committed
 
 - A Label designer, possibly reusing the node editor's infrastructure.
+- List Rating Cards ("my top 10 games of 2027"), built from percentile rankings and reusing Rating Card snapshots.
 - Node editor on mobile.
 - Custom metric dashboards.
 - Importers for specific apps (BG Stats, Untappd, Goodreads) and outside catalogs (BGG, Open Library, TMDB).

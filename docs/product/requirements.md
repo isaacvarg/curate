@@ -93,7 +93,7 @@ Testable requirements derived from the design session. Terms in **bold** are def
 - **FR-8.1** (v1) Adopting a Template copies its Levels, Attributes, fields, Score Cards, Statuses and scan action into the Collection, with fresh ids and a recorded origin for each element ([ADR 0011](../adr/0011-templates-are-published-snapshots-adopted-as-copies-with-origin-keys.md)).
 - **FR-8.2** (v1) Template updates are offered to adopting Collections one change at a time, and never applied automatically. A change the user also made is shown side by side, and keeping theirs is the default.
 - **FR-8.3** (v1) Fields copied from Shared Fields keep their Shared Field identity, and their scale can't be changed. The identity is dropped only by an explicit Detach.
-- **FR-8.4** (v1) **Rating Cards**: the User picks which fields and media to include and gets a shareable image and a public web link.
+- **FR-8.4** (v1) **Rating Cards**: the User picks which fields and media to include and gets a shareable image and a public web link. The link shows an allowlisted snapshot on the product-neutral host, updated or revoked only by the User ([ADR 0014](../adr/0014-rating-card-links-are-allowlisted-snapshots-on-the-neutral-host.md)).
 - **FR-8.5** (Later) Community Templates with contributor rankings. They can use Shared Fields but not create them.
 
 ## 9. Sharing, Visibility and social
