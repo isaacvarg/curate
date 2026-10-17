@@ -110,8 +110,9 @@ model CollectionMember {
   @@map("collection_member")
 }
 
-// Positions are contiguous from 0 (the top Level). Its Verdict belongs to the
-// Level's Overall form, so a Session form Verdict can sit beside it later.
+// Positions are contiguous from 0 (the top Level). The overallVerdict columns
+// hold its Overall Verdict, named so a Session rating's Verdict can sit beside
+// it later.
 model Level {
   id                  String     @id @default(uuid(7))
   collectionId        String
