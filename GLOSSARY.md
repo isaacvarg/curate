@@ -113,7 +113,7 @@ A set of Participants in a Session whose Scores are combined and who win or lose
 _Avoid_: Side, faction
 
 **Shared Field**:
-A field definition with a common identity and a locked scale, defined by an Official Template. Values from different users for the same Shared Field are comparable.
+A field definition with a common identity and a locked scale, minted when an Official Template is published. A copied field keeps the identity until the user explicitly detaches it, and values from different users for the same Shared Field are comparable.
 _Avoid_: Standard field, global field
 
 **Rating Card**:
@@ -125,7 +125,7 @@ A goal with criteria and a time window, measured against Sessions and Items (e.g
 _Avoid_: Quest, goal, achievement
 
 **Template**:
-A packaged setup for a kind of Collection (Levels, Attributes, Rating, Observation and Score fields, Statuses), copied into a Collection when adopted. Official Templates are curated, and community Templates come later.
+A packaged setup for a kind of Collection (Levels, Attributes, Rating, Observation and Score fields, Score Cards, Statuses), published as versions from a source Collection and copied into a Collection when adopted. Later versions are offered change by change, never applied. Official Templates are published by curators, and community Templates come later.
 _Avoid_: Preset, blueprint
 
 ### Social

@@ -12,8 +12,7 @@ Things the design session deliberately did **not** settle, so nobody mistakes th
 - **Rating Card configuration details.** Layout options, branding, what a public Rating Card link page shows.
 - **Feed design.** Which actions create feed posts (Sessions, Overall Ratings, new Items, Occasions) and how they're grouped.
 - **Moderation and reporting** for public content, Communities and Clubs.
-- **Template update offers.** What an "update available" comparison looks like when the adopter has customized the Template.
-- **Community Templates.** Contributor rankings, discovery, quality signals.
+- **Community Templates.** Contributor rankings, discovery, quality signals. Publishing reuses the Official path ([ADR 0011](../adr/0011-templates-are-published-snapshots-adopted-as-copies-with-origin-keys.md)). Template update offers were settled in slice 9.
 - **Guest claiming flow.** How a new User proves they are "Sam" on someone else's Sessions.
 - **Catalog Entry matching.** Linking existing Items to Catalog Entries when the Catalog launches (suggestions, bulk matching).
 - **Auth and accounts.** Sign-in methods, account deletion and its effect on shared Collections, Sessions and Linked Items.
