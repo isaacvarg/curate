@@ -23,7 +23,9 @@ export default function RootLayout() {
       <StatusBar style="auto" />
       <Stack>
         <Stack.Protected guard={signedIn}>
-          <Stack.Screen name="index" options={{ title: "Home" }} />
+          <Stack.Screen name="index" options={{ title: "Collections" }} />
+          <Stack.Screen name="collections/new" options={{ title: "New Collection" }} />
+          <Stack.Screen name="collections/[id]" options={{ title: "" }} />
         </Stack.Protected>
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="sign-in" options={{ title: "Sign in" }} />

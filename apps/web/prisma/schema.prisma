@@ -11,15 +11,16 @@ datasource db {
 // session is AuthSession, so the domain's Session keeps its glossary name.
 
 model User {
-  id            String    @id
-  name          String
-  email         String    @unique
-  emailVerified Boolean   @default(false)
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  authSessions  AuthSession[]
-  accounts      Account[]
+  id                    String             @id
+  name                  String
+  email                 String             @unique
+  emailVerified         Boolean            @default(false)
+  image                 String?
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  authSessions          AuthSession[]
+  accounts              Account[]
+  collectionMemberships CollectionMember[]
 
   @@map("user")
 }
@@ -69,4 +70,58 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+// Collecting.
+
+// A Collection has no owner column: who may see or change it is decided only
+// by its CollectionMember rows, so households can add members later.
+model Collection {
+  id        String             @id @default(uuid(7))
+  name      String
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  members   CollectionMember[]
+  levels    Level[]
+
+  @@map("collection")
+}
+
+enum CollectionMemberRole {
+  owner
+
+  @@map("collection_member_role")
+}
+
+model CollectionMember {
+  id           String               @id @default(uuid(7))
+  collectionId String
+  collection   Collection           @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role         CollectionMemberRole
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  @@unique([collectionId, userId])
+  @@index([userId])
+  @@map("collection_member")
+}
+
+// Positions are contiguous from 0 (the top Level). Its Verdict belongs to the
+// Level's Overall form, so a Session form Verdict can sit beside it later.
+model Level {
+  id                  String     @id @default(uuid(7))
+  collectionId        String
+  collection          Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  name                String
+  position            Int
+  overallVerdictName  String
+  // A VerdictScale from @repo/shared, parsed with its schema when read.
+  overallVerdictScale Json
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  @@unique([collectionId, position])
+  @@map("level")
 }

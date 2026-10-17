@@ -1,3 +1,4 @@
+import { collection } from "./collection";
 import { prisma } from "./db";
 import { authed, os } from "./orpc";
 
@@ -10,4 +11,5 @@ export const router = os.router({
       });
     }),
   },
+  collection,
 });
