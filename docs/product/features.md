@@ -113,11 +113,11 @@ Every feature agreed in the design session, grouped by area and tagged by phase.
 | Feature | Phase | Notes |
 |---|---|---|
 | Shared household Collections (**Collection Members**) | v1 | Shared: Items, Attributes, Status, Labels, Sessions. Personal: Overall Ratings, Verdicts, Tags |
-| Any Collection Member edits a Session's shared parts | v1 | Personal Ratings and Observations are editable only by their owner |
+| Any Collection Member edits a Session's shared parts | v1 | Personal Ratings and Observations are editable only by their owner. Concurrent saves merge cell by cell ([ADR 0012](../adr/0012-shared-saves-are-patched-from-a-base-revision.md)) |
 | A leaving member gets a copy of the Collection | v1 | The original and its Labels stay with the remaining members |
 | **Visibility** per Collection: Private / Followers / Public | Social | Inherited by Items, Sessions and Overall Ratings |
 | Account-wide Visibility for journal and Occasion content | Social | Private by default |
-| Guest names never public ("+2 guests") | Social | |
+| Guest names never public ("+2 guests") | Social | Visible only to the owner and fellow Collection Members |
 | One-way **Follow**, opting into Collections one at a time | Social | Nothing is followed by default. Approval optional |
 | Nudge when a followed User starts a new Collection | Social | |
 | Following someone's journal as a separate opt-in | Social | |
