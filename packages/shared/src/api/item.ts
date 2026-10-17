@@ -19,6 +19,25 @@ export const itemListInputSchema = z.object({
 
 export const itemGetInputSchema = z.object({ id: z.string() });
 
+export const itemRenameInputSchema = z.object({ id: z.string(), name: nameSchema });
+
+// What deleting an Item would remove along with it: its descendants at every
+// Level below, and every Collection Member's Overall Ratings of the Item and
+// those descendants.
+export const itemDeletePreviewSchema = z.object({
+  descendantCount: z.number().int(),
+  overallRatingCount: z.number().int(),
+});
+
+export const itemDeleteInputSchema = z.object({
+  id: z.string(),
+  // Needed only when the Item has children: set once the caller has seen the
+  // delete preview and confirmed the cascade.
+  confirmed: z.boolean().optional(),
+});
+
+export type ItemDeletePreview = z.infer<typeof itemDeletePreviewSchema>;
+
 // An Item as it appears in lists, with the caller's own Overall Rating (null
 // when they haven't rated it). Other Users' ratings are never included.
 export const itemSummarySchema = z.object({
