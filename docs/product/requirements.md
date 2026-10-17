@@ -113,7 +113,7 @@ Testable requirements derived from the design session. Terms in **bold** are def
 ## 10. Data portability
 
 - **FR-10.1** (v1) CSV import with column-to-field mapping, able to create Items across Levels.
-- **FR-10.2** (v1) Full export of a User's data as CSV and JSON, media included.
+- **FR-10.2** (v1) Full export of a User's data, or of one Collection, as CSV and JSON, media included. The JSON document is canonical and versioned, and the CSVs are derived views ([ADR 0013](../adr/0013-exports-are-a-versioned-json-document-with-derived-csv-views.md)).
 - **FR-10.3** (Later) Importers for specific apps (BG Stats, Untappd, Goodreads).
 
 ---
@@ -127,6 +127,6 @@ Testable requirements derived from the design session. Terms in **bold** are def
 - **NFR-5 Shared logic.** Expression evaluation, Verdict normalization and condition logic live in `packages/shared` and give identical results on every client and the server.
 - **NFR-6 Privacy by default.** New Occasions and locations are private. Guest names are never public. Location is never captured without a user action.
 - **NFR-7 Stable Label URLs.** Label URLs must remain valid for the life of the Item, including after it's Sold, after a Collection Member leaves, and across domain or product renames. Labels are physical and can't be reprinted cheaply. See [ADR 0009](../adr/0009-labels-encode-an-opaque-code-on-a-neutral-domain.md).
-- **NFR-8 Data ownership.** Users can export everything they've created, in open formats, at any time.
+- **NFR-8 Data ownership.** Users can export everything they've created, in open formats, at any time. The export's JSON format changes only additively within a major version ([ADR 0013](../adr/0013-exports-are-a-versioned-json-document-with-derived-csv-views.md)).
 - **NFR-9 Media accounting.** Media storage is tracked per User so limits can be added later.
 - **NFR-10 Correctness over guessing.** The app never displays a calculated result (score, winner, Verdict, Challenge progress) built from incomplete inputs as if it were final.

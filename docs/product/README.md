@@ -27,3 +27,4 @@ Output of the product design session (2026-10-14 → 2026-10-16). Start here.
 | [0010](../adr/0010-challenges-are-a-match-expression-plus-a-fixed-measure.md) | Challenges are a match expression plus a fixed measure |
 | [0011](../adr/0011-templates-are-published-snapshots-adopted-as-copies-with-origin-keys.md) | Templates are published snapshots, adopted as copies with origin keys |
 | [0012](../adr/0012-shared-saves-are-patched-from-a-base-revision.md) | Shared saves are patched from a base revision |
+| [0013](../adr/0013-exports-are-a-versioned-json-document-with-derived-csv-views.md) | Exports are a versioned JSON document with derived CSV views |

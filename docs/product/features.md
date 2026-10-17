@@ -136,7 +136,7 @@ Every feature agreed in the design session, grouped by area and tagged by phase.
 | Web app (Next.js): node editor, public pages, Rating Card and Label landing pages | v1 | |
 | Logging that queues offline (Sessions and media), syncing later | v1 | |
 | CSV import with column → field mapping, including across Levels | v1 | |
-| Full export: CSV and JSON, media included | v1 | |
+| Full **Export**: CSV and JSON, media included | v1 | Whole account or one Collection. Built in the background as ZIP parts. The JSON is canonical and versioned ([ADR 0013](../adr/0013-exports-are-a-versioned-json-document-with-derived-csv-views.md)) |
 | Media size tracked per user | v1 | For future pricing |
 | Importers for specific apps (BG Stats, Untappd, Goodreads) | Later | |
 | Full offline-first browsing and editing | Later | |
