@@ -81,7 +81,7 @@ A person present in a Session or Occasion, either a User or a Guest. In a Sessio
 _Avoid_: Player, attendee
 
 **Guest**:
-A named Participant who isn't a User, owned by whoever logged the Session. A Guest can later be claimed by a real User.
+A named Participant who isn't a User, owned by whoever created it. Its name is visible to its owner and to the Collection Members of Collections where it appears, and they can reuse it. A Guest can later be claimed by a real User.
 _Avoid_: Anonymous player, friend
 
 **Field Kind**:
@@ -135,7 +135,7 @@ Who can see something: Private, Followers or Public. It is set per Collection, a
 _Avoid_: Privacy level, sharing
 
 **Collection Member**:
-A User who shares a Collection with others, such as a household, and can add Items and log Sessions in it. Each member keeps their own Overall Rating on shared Items.
+A User who shares a Collection with others, such as a household, and can add Items and log Sessions in it. Each member keeps their own Overall Rating on shared Items, and a Session counts as theirs when they're a Participant in it.
 _Avoid_: Co-owner, collaborator
 
 **Follow**:

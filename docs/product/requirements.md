@@ -41,7 +41,7 @@ Testable requirements derived from the design session. Terms in **bold** are def
 - **FR-3.4** (v1) One device can enter every Participant's values.
 - **FR-3.5** (v1) Notes and media can attach to an Occasion, a Session, or a Participant within a Session.
 - **FR-3.6** (v1) Media types: photo, video (up to 2 minutes), voice memo (up to 10 minutes). Media is processed on the phone and uploaded separately from the Session or Occasion it belongs to ([ADR 0008](../adr/0008-media-uploaded-separately-and-processed-on-device.md)). The system records the total media size per User.
-- **FR-3.7** (v1) In a shared Collection, any **Collection Member** can edit a Session's shared parts (date, Participants, Scores, Session notes). Per-person Ratings and Observations are editable only by the person they belong to.
+- **FR-3.7** (v1) In a shared Collection, any **Collection Member** can edit a Session's shared parts (date, Participants, Scores, Session notes). Per-person Ratings and Observations are editable only by the person they belong to. Concurrent saves are patched from their base revision, and a replaced change is reported to its author ([ADR 0012](../adr/0012-shared-saves-are-patched-from-a-base-revision.md)).
 - **FR-3.8** (Social) A Session appears in the history of every User Participant, with an offer to create a Linked Item in their own Collection.
 - **FR-3.9** (Social) A User Participant can edit their own Ratings, Observations and notes, and can enter their own Score column from their own device.
 - **FR-3.10** (Social) A User can claim a Guest, taking over that Guest's history.
@@ -99,10 +99,10 @@ Testable requirements derived from the design session. Terms in **bold** are def
 ## 9. Sharing, Visibility and social
 
 - **FR-9.1** (v1) A Collection can have several Collection Members. Shared: Items, Attributes, Status, Labels, Sessions. Personal: Overall Ratings, Verdicts, Tags.
-- **FR-9.2** (v1) A member leaving a shared Collection gets a full copy of it as it stood, including the Sessions they took part in and their ratings. The original and its Labels stay with the remaining members.
+- **FR-9.2** (v1) A member leaving a shared Collection gets a full copy of it as it stood, including the Sessions they took part in and their ratings. The original and its Labels stay with the remaining members. On each side, the other people become Guests that keep their Scores, and each person's opinions go with that person.
 - **FR-9.3** (model) Each Collection has a **Visibility** (Private / Followers / Public), inherited by its Items, Sessions and Overall Ratings, with a per-Item hide override.
 - **FR-9.4** (model) Each User has an account-wide Visibility for Occasion and journal content, Private by default. A visible Session inside a hidden Occasion never reveals the Occasion's notes, media or Participants.
-- **FR-9.5** (model) Guest names are never shown outside the owner's own view.
+- **FR-9.5** (model) Guest names are never shown outside the owner's own view and the Collection Members of Collections where the Guest appears.
 - **FR-9.6** (Social) A **Follow** is one-way and covers specific Collections. Following a User subscribes to nothing until Collections are chosen. Journal following is a separate opt-in. Accounts may require follow approval.
 - **FR-9.7** (Social) When a followed User creates a Collection, followers get a one-time prompt and are not auto-subscribed.
 - **FR-9.8** (Social) **Communities** and **Clubs** have Owner / Admin / Member roles and open, approval-required or invite-only joining. Clubs can be standalone or inside a Community, and only Community Admins can create the latter.

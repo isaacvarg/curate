@@ -26,3 +26,4 @@ Output of the product design session (2026-10-14 → 2026-10-16). Start here.
 | [0009](../adr/0009-labels-encode-an-opaque-code-on-a-neutral-domain.md) | Labels encode an opaque code on a neutral, permanent Label domain |
 | [0010](../adr/0010-challenges-are-a-match-expression-plus-a-fixed-measure.md) | Challenges are a match expression plus a fixed measure |
 | [0011](../adr/0011-templates-are-published-snapshots-adopted-as-copies-with-origin-keys.md) | Templates are published snapshots, adopted as copies with origin keys |
+| [0012](../adr/0012-shared-saves-are-patched-from-a-base-revision.md) | Shared saves are patched from a base revision |
