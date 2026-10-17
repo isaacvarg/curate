@@ -1,17 +1,24 @@
 import { ORPCError, isDefinedError } from "@orpc/client";
-import type { Level } from "@repo/shared";
+import { defaultVerdict, type Level, sameVerdictScale } from "@repo/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Button, ErrorText, Field } from "@/components/form";
 import { orpc, queryClient } from "@/lib/api";
+import {
+  describeScale,
+  parseScaleDraft,
+  type ScaleDraft,
+  scaleLockedMessage,
+  scalePresets,
+  toScaleDraft,
+} from "@/lib/verdict-settings";
 
 // Level settings for a Collection: rename any Level, add a Level below the
 // deepest one, or remove the deepest Level while it has no Items. Only the
 // deepest Level can be added or removed (Levels are never inserted
-// mid-structure). The Verdict settings ticket adds each Level's Overall
-// Verdict to its row here.
+// mid-structure). Each Level's row also configures its Overall Verdict.
 export default function LevelSettings() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const collection = useQuery(orpc.collection.get.queryOptions({ input: { id } }));
@@ -40,13 +47,18 @@ export default function LevelSettings() {
     <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
       <Text style={styles.hint}>Top Level first. Only the deepest Level can be removed, and only while it has no Items.</Text>
       {levels.map((level) => (
-        // Keyed by name too, so the field resets after a rename lands.
-        <LevelRow key={`${level.id}:${level.name}`} level={level} />
+        // Keyed by name and Verdict too, so the fields reset after a save lands.
+        <LevelRow key={levelRowKey(level)} level={level} />
       ))}
       {deepest && levels.length > 1 ? <RemoveDeepest collectionId={id} level={deepest} /> : null}
       <AppendDeepest collectionId={id} />
     </ScrollView>
   );
+}
+
+function levelRowKey(level: Level): string {
+  const { name, scale } = level.overallVerdict;
+  return `${level.id}:${level.name}:${name}:${JSON.stringify(scale)}`;
 }
 
 // Refreshes the Collection (and its Levels) everywhere it's shown.
@@ -76,7 +88,129 @@ function LevelRow({ level }: { level: Level }) {
         ) : null}
       </View>
       <ErrorText>{rename.error ? errorMessage(rename.error, "Couldn't rename it.") : null}</ErrorText>
+      <VerdictSettings level={level} />
     </View>
+  );
+}
+
+// The Level's Overall Verdict: its name (always editable) and its scale
+// (refused by the server with SCALE_LOCKED once anyone has rated at this
+// Level). Starts from the saved Verdict; LevelRow's key resets it after a save.
+function VerdictSettings({ level }: { level: Level }) {
+  const saved = level.overallVerdict;
+  const [name, setName] = useState(saved.name);
+  const [draft, setDraft] = useState<ScaleDraft>(() => toScaleDraft(saved.scale));
+  const update = useMutation(
+    orpc.level.updateVerdict.mutationOptions({
+      // Items show their Verdict on this scale, so refresh them too.
+      onSuccess: () =>
+        Promise.all([invalidateCollection(), queryClient.invalidateQueries({ queryKey: orpc.item.key() })]),
+    }),
+  );
+
+  const parsed = parseScaleDraft(draft);
+  const nameChanged = name.trim() !== saved.name;
+  const scaleChanged = "scale" in parsed && !sameVerdictScale(parsed.scale, saved.scale);
+  const draftChanged = !sameDraft(draft, toScaleDraft(saved.scale));
+  const scaleError = draftChanged && "error" in parsed ? parsed.error : null;
+  const canSave = (nameChanged || scaleChanged) && scaleError === null && !update.isPending;
+
+  const save = () =>
+    update.mutate({
+      id: level.id,
+      ...(nameChanged ? { name } : {}),
+      ...(scaleChanged && "scale" in parsed ? { scale: parsed.scale } : {}),
+    });
+
+  let error: string | null = null;
+  if (update.error) {
+    if (isDefinedError(update.error) && update.error.code === "SCALE_LOCKED") {
+      error = scaleLockedMessage(update.error.data.ratingCount);
+    } else {
+      error = errorMessage(update.error, "Couldn't save the Verdict.", "Give the Verdict a name.");
+    }
+  }
+
+  const switchKind = (kind: ScaleDraft["kind"]) => {
+    if (kind === draft.kind) return;
+    setDraft(kind === "numeric" ? toScaleDraft(defaultVerdict.scale) : { kind: "labels", labels: "" });
+  };
+
+  return (
+    <View style={styles.verdict}>
+      <Text style={styles.subheading}>
+        Verdict: {saved.name}, {describeScale(saved.scale)}
+      </Text>
+      <Field placeholder="Verdict name, e.g. Score" value={name} onChangeText={setName} />
+
+      <View style={styles.chips} accessibilityRole="radiogroup">
+        {scalePresets.map((preset) => {
+          const selected = "scale" in parsed && sameVerdictScale(parsed.scale, preset.scale);
+          return (
+            <Chip
+              key={preset.title}
+              title={preset.title}
+              selected={selected}
+              onPress={() => setDraft(toScaleDraft(preset.scale))}
+            />
+          );
+        })}
+      </View>
+
+      <View style={styles.chips} accessibilityRole="radiogroup">
+        <Chip title="Numbers" selected={draft.kind === "numeric"} onPress={() => switchKind("numeric")} />
+        <Chip title="Labels" selected={draft.kind === "labels"} onPress={() => switchKind("labels")} />
+      </View>
+
+      {draft.kind === "numeric" ? (
+        <View style={styles.row}>
+          {(["min", "max", "step"] as const).map((field) => (
+            <View key={field} style={styles.numberField}>
+              <Text style={styles.position}>{numberFieldTitles[field]}</Text>
+              <Field
+                keyboardType="decimal-pad"
+                accessibilityLabel={`${numberFieldTitles[field]} for ${saved.name}`}
+                value={draft[field]}
+                onChangeText={(text) => setDraft({ ...draft, [field]: text })}
+              />
+            </View>
+          ))}
+        </View>
+      ) : (
+        <Field
+          multiline
+          placeholder={"One label per line, worst first\nThumbs down\nMeh\nThumbs up"}
+          accessibilityLabel={`Labels for ${saved.name}, one per line, worst first`}
+          value={draft.labels}
+          onChangeText={(labels) => setDraft({ kind: "labels", labels })}
+          style={styles.labels}
+        />
+      )}
+
+      <ErrorText>{scaleError ?? error}</ErrorText>
+      {nameChanged || scaleChanged ? (
+        <Button title={update.isPending ? "Saving…" : "Save Verdict"} onPress={save} disabled={!canSave} />
+      ) : null}
+    </View>
+  );
+}
+
+const numberFieldTitles = { min: "Minimum", max: "Maximum", step: "Step" } as const;
+
+function sameDraft(a: ScaleDraft, b: ScaleDraft): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function Chip({ title, selected, onPress }: { title: string; selected: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected }}
+      onPress={onPress}
+      style={[styles.chip, selected && styles.chipSelected]}
+    >
+      <Text style={selected ? styles.chipTextSelected : styles.chipText}>{title}</Text>
+    </Pressable>
   );
 }
 
@@ -132,12 +266,12 @@ function RemoveDeepest({ collectionId, level }: { collectionId: string; level: L
   );
 }
 
-function errorMessage(error: unknown, fallback: string): string {
+function errorMessage(error: unknown, fallback: string, badRequest = "Give the Level a name."): string {
   if (!(error instanceof ORPCError)) return "Couldn't reach the server. Try again.";
   // Typed errors (NOT_FOUND, ONLY_LEVEL...) carry a message meant for people.
   if (error.defined) return error.message;
   // Input validation failures come back as BAD_REQUEST.
-  if (error.code === "BAD_REQUEST") return "Give the Level a name.";
+  if (error.code === "BAD_REQUEST") return badRequest;
   return `${fallback} Try again.`;
 }
 
@@ -151,4 +285,13 @@ const styles = StyleSheet.create({
   field: { flex: 1 },
   action: { color: "#2f6fed", fontSize: 16, fontWeight: "600" },
   remove: { color: "#c62828", fontSize: 16, fontWeight: "600" },
+  verdict: { gap: 8, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: "#e5e5e5", marginTop: 4 },
+  subheading: { fontSize: 15, fontWeight: "600" },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  chip: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 16, borderWidth: 1, borderColor: "#ccc" },
+  chipSelected: { backgroundColor: "#2f6fed", borderColor: "#2f6fed" },
+  chipText: { fontSize: 15 },
+  chipTextSelected: { fontSize: 15, color: "#fff" },
+  numberField: { flex: 1, gap: 4 },
+  labels: { minHeight: 110, textAlignVertical: "top" },
 });

@@ -8,7 +8,12 @@ import {
   levelSchema,
 } from "./collection";
 import { itemCreateInputSchema, itemGetInputSchema, itemListInputSchema, itemSchema, itemSummarySchema } from "./item";
-import { levelAppendDeepestInputSchema, levelRemoveDeepestInputSchema, levelRenameInputSchema } from "./level";
+import {
+  levelAppendDeepestInputSchema,
+  levelRemoveDeepestInputSchema,
+  levelRenameInputSchema,
+  levelUpdateVerdictInputSchema,
+} from "./level";
 import { overallRatingSchema, ratingClearOverallInputSchema, ratingSetOverallInputSchema } from "./rating";
 
 // Every non-auth procedure requires a signed-in User and can fail with
@@ -78,6 +83,19 @@ export const contract = {
       })
       .input(levelRemoveDeepestInputSchema)
       .output(z.void()),
+    // Renaming is always allowed. A scale change (including a change of kind)
+    // is refused while anyone has an Overall Rating at the Level, so stored
+    // raw values are never reinterpreted on a different scale.
+    updateVerdict: authed
+      .errors({
+        NOT_FOUND: { message: "Level not found." },
+        SCALE_LOCKED: {
+          message: "This scale is locked because Items at this Level already have ratings.",
+          data: z.object({ ratingCount: z.number().int() }),
+        },
+      })
+      .input(levelUpdateVerdictInputSchema)
+      .output(levelSchema),
   },
   item: {
     create: authed

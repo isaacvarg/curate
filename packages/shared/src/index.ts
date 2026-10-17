@@ -12,6 +12,7 @@ export type { BreadcrumbEntry, Item, ItemSummary } from "./api/item";
 export type { OverallRating } from "./api/rating";
 export {
   defaultVerdict,
+  sameVerdictScale,
   toUnitInterval,
   type Verdict,
   type VerdictScale,

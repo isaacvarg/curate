@@ -1,6 +1,6 @@
 import { defaultVerdict } from "@repo/shared";
 import { describe, expect, it } from "vitest";
-import { formatVerdict, verdictOptions } from "./verdict";
+import { formatVerdict, parseVerdictInput, stepVerdict, verdictOptions } from "./verdict";
 
 describe("verdictOptions", () => {
   it("offers every star on the default ★1–5 scale as stars", () => {
@@ -33,5 +33,60 @@ describe("formatVerdict", () => {
 
   it("shows a label as itself", () => {
     expect(formatVerdict({ kind: "labels", labels: ["C", "B", "A", "S"] }, "A")).toBe("A");
+  });
+});
+
+describe("verdictOptions for large numeric scales", () => {
+  it("still offers chips for 0–10 in whole steps", () => {
+    expect(verdictOptions({ kind: "numeric", min: 0, max: 10, step: 1 }).kind).toBe("choices");
+  });
+
+  it.each([
+    ["0–100", { kind: "numeric", min: 0, max: 100, step: 1 }],
+    ["0–10 in tenths", { kind: "numeric", min: 0, max: 10, step: 0.1 }],
+  ] as const)("uses a stepper for %s", (_, scale) => {
+    expect(verdictOptions(scale)).toEqual({ kind: "stepper" });
+  });
+});
+
+describe("stepVerdict", () => {
+  const hundred = { kind: "numeric", min: 0, max: 100, step: 1 } as const;
+  const tenths = { kind: "numeric", min: 0, max: 10, step: 0.1 } as const;
+
+  it("moves one step up or down", () => {
+    expect(stepVerdict(hundred, 85, 1)).toBe(86);
+    expect(stepVerdict(hundred, 85, -1)).toBe(84);
+  });
+
+  it("stops at the scale's ends", () => {
+    expect(stepVerdict(hundred, 100, 1)).toBe(100);
+    expect(stepVerdict(hundred, 0, -1)).toBe(0);
+  });
+
+  it("starts from the middle of the scale when there's no value yet", () => {
+    expect(stepVerdict(hundred, null, 1)).toBe(50);
+    expect(stepVerdict(hundred, null, -1)).toBe(50);
+  });
+
+  it("lands exactly on decimal steps", () => {
+    expect(stepVerdict(tenths, 0.2, 1)).toBe(0.3);
+  });
+});
+
+describe("parseVerdictInput", () => {
+  const hundred = { kind: "numeric", min: 0, max: 100, step: 1 } as const;
+
+  it("reads a number on the scale", () => {
+    expect(parseVerdictInput(hundred, " 85 ")).toEqual({ value: 85 });
+  });
+
+  it.each([
+    ["", "Enter a number."],
+    ["great", "Enter a number."],
+    ["101", "Must be at most 100."],
+    ["-1", "Must be at least 0."],
+    ["85.5", "Must be in steps of 1."],
+  ])("explains why %j isn't on 0–100", (text, error) => {
+    expect(parseVerdictInput(hundred, text)).toEqual({ error });
   });
 });

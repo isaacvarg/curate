@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   defaultVerdict,
+  sameVerdictScale,
   toUnitInterval,
   type VerdictScale,
   verdictScaleSchema,
@@ -91,5 +92,28 @@ describe("default verdict", () => {
   it("is Overall on a five-star scale", () => {
     expect(defaultVerdict).toEqual({ name: "Overall", scale: { kind: "numeric", min: 1, max: 5, step: 1 } });
     expect(verdictScaleSchema.safeParse(defaultVerdict.scale).success).toBe(true);
+  });
+});
+
+describe("verdict scale equality", () => {
+  it("treats the same numeric scale as the same, whatever its key order", () => {
+    expect(
+      sameVerdictScale({ kind: "numeric", min: 1, max: 5, step: 1 }, { step: 1, max: 5, min: 1, kind: "numeric" }),
+    ).toBe(true);
+  });
+
+  it.each<[string, VerdictScale]>([
+    ["a different max", { kind: "numeric", min: 1, max: 10, step: 1 }],
+    ["a different step", { kind: "numeric", min: 1, max: 5, step: 0.5 }],
+    ["a label scale", { kind: "labels", labels: ["1", "2", "3", "4", "5"] }],
+  ])("treats %s as a different scale from ★1–5", (_, other) => {
+    expect(sameVerdictScale({ kind: "numeric", min: 1, max: 5, step: 1 }, other)).toBe(false);
+  });
+
+  it("compares label scales by their labels in order", () => {
+    const tiers: VerdictScale = { kind: "labels", labels: ["C", "B", "A"] };
+    expect(sameVerdictScale(tiers, { kind: "labels", labels: ["C", "B", "A"] })).toBe(true);
+    expect(sameVerdictScale(tiers, { kind: "labels", labels: ["A", "B", "C"] })).toBe(false);
+    expect(sameVerdictScale(tiers, { kind: "labels", labels: ["C", "B", "A", "S"] })).toBe(false);
   });
 });

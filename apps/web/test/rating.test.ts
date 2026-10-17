@@ -1,6 +1,5 @@
 import type { VerdictScale } from "@repo/shared";
 import { describe, expect, it } from "vitest";
-import { prisma } from "@/server/db";
 import { createTestClient, createTestUser } from "./harness";
 
 async function beerCollection() {
@@ -12,10 +11,10 @@ async function beerCollection() {
   return { client, collection, level, item };
 }
 
-// Arrange-only stand-in until `level.updateVerdict` (#34) can change a scale
-// through the API.
-async function setOverallVerdictScale(levelId: string, scale: VerdictScale) {
-  await prisma.level.update({ where: { id: levelId }, data: { overallVerdictScale: scale } });
+type TestClient = ReturnType<typeof createTestClient>;
+
+async function setOverallVerdictScale(client: TestClient, levelId: string, scale: VerdictScale) {
+  await client.level.updateVerdict({ id: levelId, scale });
 }
 
 describe("rating.setOverall", () => {
@@ -73,7 +72,7 @@ describe("rating.setOverall", () => {
 
   it("accepts a value on a half-step scale and rejects one off its step", async () => {
     const { client, level, item } = await beerCollection();
-    await setOverallVerdictScale(level.id, { kind: "numeric", min: 0, max: 5, step: 0.5 });
+    await setOverallVerdictScale(client, level.id, { kind: "numeric", min: 0, max: 5, step: 0.5 });
 
     await client.rating.setOverall({ itemId: item.id, verdict: 3.5 });
 
@@ -86,7 +85,7 @@ describe("rating.setOverall", () => {
 
   it("stores the raw value on the scale, not its 0–1 form", async () => {
     const { client, level, item } = await beerCollection();
-    await setOverallVerdictScale(level.id, { kind: "numeric", min: 0, max: 100, step: 1 });
+    await setOverallVerdictScale(client, level.id, { kind: "numeric", min: 0, max: 100, step: 1 });
 
     await client.rating.setOverall({ itemId: item.id, verdict: 85 });
 
@@ -95,7 +94,7 @@ describe("rating.setOverall", () => {
 
   it("takes one of a label scale's labels and rejects anything else", async () => {
     const { client, level, item } = await beerCollection();
-    await setOverallVerdictScale(level.id, { kind: "labels", labels: ["F", "D", "C", "B", "A", "S"] });
+    await setOverallVerdictScale(client, level.id, { kind: "labels", labels: ["F", "D", "C", "B", "A", "S"] });
 
     await client.rating.setOverall({ itemId: item.id, verdict: "A" });
 

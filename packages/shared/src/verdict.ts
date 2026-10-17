@@ -37,6 +37,18 @@ export type VerdictScale = z.infer<typeof verdictScaleSchema>;
 
 export type VerdictValue = number | string;
 
+// Whether two scales would read stored values the same way. Compared by
+// field, not by JSON, since a stored scale's key order isn't preserved.
+export function sameVerdictScale(a: VerdictScale, b: VerdictScale): boolean {
+  if (a.kind === "labels" && b.kind === "labels") {
+    return a.labels.length === b.labels.length && a.labels.every((label, i) => label === b.labels[i]);
+  }
+  if (a.kind === "numeric" && b.kind === "numeric") {
+    return a.min === b.min && a.max === b.max && a.step === b.step;
+  }
+  return false;
+}
+
 // A numeric scale takes a number on one of its steps; a label scale takes one
 // of its labels.
 export function verdictValueSchema(scale: VerdictScale): z.ZodType<VerdictValue> {
