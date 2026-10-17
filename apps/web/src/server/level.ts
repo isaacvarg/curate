@@ -1,17 +1,39 @@
-import { defaultVerdict, sameVerdictScale, verdictScaleSchema } from "@repo/shared";
+import { defaultVerdict, type Level, sameVerdictScale, type VerdictScale, verdictScaleSchema } from "@repo/shared";
 import type { Prisma } from "@/generated/prisma/client";
-import { memberOf, toLevel } from "./collection";
+import { findMemberCollection, findMemberLevel } from "./access";
 import { prisma } from "./db";
 import { authed } from "./orpc";
+
+type LevelRow = Pick<
+  Prisma.LevelGetPayload<object>,
+  "id" | "name" | "position" | "overallVerdictName" | "overallVerdictScale"
+>;
+
+// A stored Level's Overall Verdict scale (a Json column), checked on read.
+export function overallVerdictScaleOf(level: Pick<LevelRow, "overallVerdictScale">): VerdictScale {
+  return verdictScaleSchema.parse(level.overallVerdictScale);
+}
+
+export function toLevel(level: LevelRow): Level {
+  return {
+    id: level.id,
+    name: level.name,
+    position: level.position,
+    overallVerdict: { name: level.overallVerdictName, scale: overallVerdictScaleOf(level) },
+  };
+}
+
+// Every new Level starts with the default Overall Verdict.
+export const defaultOverallVerdictData = {
+  overallVerdictName: defaultVerdict.name,
+  overallVerdictScale: defaultVerdict.scale,
+} satisfies Pick<Prisma.LevelUncheckedCreateInput, "overallVerdictName" | "overallVerdictScale">;
 
 // Locks the Collection's row for the rest of the transaction, so two changes
 // to its Levels can't both read the same deepest Level. Returns false when
 // the Collection is missing or the User isn't a member.
 export async function lockCollection(tx: Prisma.TransactionClient, collectionId: string, userId: string) {
-  const collection = await tx.collection.findFirst({
-    where: { id: collectionId, ...memberOf(userId) },
-    select: { id: true },
-  });
+  const collection = await findMemberCollection(tx, collectionId, userId);
   if (!collection) return false;
   await tx.$queryRaw`select id from collection where id = ${collection.id} for update`;
   return true;
@@ -31,20 +53,14 @@ export async function lockLevelVerdict(tx: Prisma.TransactionClient, levelId: st
 
 export const level = {
   rename: authed.level.rename.handler(async ({ input, context, errors }) => {
-    const found = await prisma.level.findFirst({
-      where: { id: input.id, collection: memberOf(context.user.id) },
-      select: { id: true },
-    });
+    const found = await findMemberLevel(prisma, input.id, context.user.id);
     if (!found) throw errors.NOT_FOUND();
     return toLevel(await prisma.level.update({ where: { id: found.id }, data: { name: input.name } }));
   }),
 
   updateVerdict: authed.level.updateVerdict.handler(async ({ input, context, errors }) => {
     return prisma.$transaction(async (tx) => {
-      const found = await tx.level.findFirst({
-        where: { id: input.id, collection: memberOf(context.user.id) },
-        select: { id: true },
-      });
+      const found = await findMemberLevel(tx, input.id, context.user.id);
       if (!found) throw errors.NOT_FOUND();
       // rating.setOverall takes a share lock on the same row before reading
       // the scale, so no rating can land between this count and the update.
@@ -54,7 +70,7 @@ export const level = {
         select: { overallVerdictScale: true },
       });
       // Resending the current scale (say, alongside a rename) isn't a change.
-      const currentScale = verdictScaleSchema.parse(current.overallVerdictScale);
+      const currentScale = overallVerdictScaleOf(current);
       const scaleChanges = input.scale !== undefined && !sameVerdictScale(currentScale, input.scale);
       if (scaleChanges) {
         const ratingCount = await tx.overallRating.count({ where: { item: { levelId: found.id } } });
@@ -81,8 +97,7 @@ export const level = {
           collectionId: input.collectionId,
           name: input.name,
           position: (deepest?.position ?? -1) + 1,
-          overallVerdictName: defaultVerdict.name,
-          overallVerdictScale: defaultVerdict.scale,
+          ...defaultOverallVerdictData,
         },
       });
       return toLevel(row);

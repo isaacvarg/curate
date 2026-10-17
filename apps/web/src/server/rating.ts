@@ -1,7 +1,8 @@
-import { type OverallRating, type VerdictValue, verdictScaleSchema, verdictValueSchema } from "@repo/shared";
-import { memberOf } from "./collection";
+import { type OverallRating, type VerdictValue, verdictValueSchema } from "@repo/shared";
+import type { Prisma } from "@/generated/prisma/client";
+import { findMemberItem } from "./access";
 import { prisma } from "./db";
-import { lockLevelVerdict } from "./level";
+import { lockLevelVerdict, overallVerdictScaleOf } from "./level";
 import { authed } from "./orpc";
 
 // Selects only `userId`'s own Overall Rating of an Item; nest it in an Item
@@ -33,20 +34,14 @@ function toStoredVerdict(value: VerdictValue): StoredVerdict {
 }
 
 // An Item the caller may rate: one in a Collection they're a member of.
-function findRateableItem(itemId: string, userId: string) {
-  return prisma.item.findFirst({
-    where: { id: itemId, collection: memberOf(userId) },
-    select: { id: true },
-  });
+function findRateableItem(db: Prisma.TransactionClient, itemId: string, userId: string) {
+  return findMemberItem(db, itemId, userId);
 }
 
 export const rating = {
   setOverall: authed.rating.setOverall.handler(async ({ input, context, errors }) => {
     return prisma.$transaction(async (tx) => {
-      const item = await tx.item.findFirst({
-        where: { id: input.itemId, collection: memberOf(context.user.id) },
-        select: { id: true, levelId: true },
-      });
+      const item = await findRateableItem(tx, input.itemId, context.user.id);
       if (!item) throw errors.NOT_FOUND();
       // Held until commit, so level.updateVerdict can't change the scale
       // between this check and the write (or count ratings without this one).
@@ -56,8 +51,7 @@ export const rating = {
         select: { overallVerdictScale: true },
       });
       // The same value rules the phone uses, against this Item's Level's scale.
-      const scale = verdictScaleSchema.parse(level.overallVerdictScale);
-      const parsed = verdictValueSchema(scale).safeParse(input.verdict);
+      const parsed = verdictValueSchema(overallVerdictScaleOf(level)).safeParse(input.verdict);
       if (!parsed.success) throw errors.VALUE_OUT_OF_SCALE();
 
       const verdict = toStoredVerdict(parsed.data);
@@ -72,7 +66,7 @@ export const rating = {
   }),
 
   clearOverall: authed.rating.clearOverall.handler(async ({ input, context, errors }) => {
-    const item = await findRateableItem(input.itemId, context.user.id);
+    const item = await findRateableItem(prisma, input.itemId, context.user.id);
     if (!item) throw errors.NOT_FOUND();
     await prisma.overallRating.deleteMany({ where: { itemId: item.id, userId: context.user.id } });
   }),

@@ -1,17 +1,9 @@
-import {
-  type Collection,
-  type CollectionDeletePreview,
-  defaultLevelName, defaultVerdict, type Level, verdictScaleSchema } from "@repo/shared";
+import { type Collection, type CollectionDeletePreview, defaultLevelName } from "@repo/shared";
 import type { Prisma } from "@/generated/prisma/client";
+import { findMemberCollection, memberOf } from "./access";
 import { prisma } from "./db";
+import { defaultOverallVerdictData, toLevel } from "./level";
 import { authed } from "./orpc";
-
-// Every authorization check on a Collection goes through this: a User may
-// reach a Collection only through a CollectionMember row, never an owner
-// column. Use it in `where` clauses on Collection.
-export function memberOf(userId: string) {
-  return { members: { some: { userId } } } satisfies Prisma.CollectionWhereInput;
-}
 
 const collectionInclude = {
   levels: { orderBy: { position: "asc" } },
@@ -19,23 +11,6 @@ const collectionInclude = {
 } satisfies Prisma.CollectionInclude;
 
 type CollectionRow = Prisma.CollectionGetPayload<{ include: typeof collectionInclude }>;
-
-type LevelRow = Pick<
-  Prisma.LevelGetPayload<object>,
-  "id" | "name" | "position" | "overallVerdictName" | "overallVerdictScale"
->;
-
-export function toLevel(level: LevelRow): Level {
-  return {
-    id: level.id,
-    name: level.name,
-    position: level.position,
-    overallVerdict: {
-      name: level.overallVerdictName,
-      scale: verdictScaleSchema.parse(level.overallVerdictScale),
-    },
-  };
-}
 
 function toCollection(row: CollectionRow): Collection {
   return {
@@ -54,12 +29,7 @@ export const collection = {
         name: input.name,
         members: { create: { userId: context.user.id, role: "owner" } },
         levels: {
-          create: levelNames.map((name, position) => ({
-            name,
-            position,
-            overallVerdictName: defaultVerdict.name,
-            overallVerdictScale: defaultVerdict.scale,
-          })),
+          create: levelNames.map((name, position) => ({ name, position, ...defaultOverallVerdictData })),
         },
       },
       include: collectionInclude,
@@ -85,10 +55,7 @@ export const collection = {
   }),
 
   rename: authed.collection.rename.handler(async ({ input, context, errors }) => {
-    const found = await prisma.collection.findFirst({
-      where: { id: input.id, ...memberOf(context.user.id) },
-      select: { id: true },
-    });
+    const found = await findMemberCollection(prisma, input.id, context.user.id);
     if (!found) throw errors.NOT_FOUND();
     return prisma.collection.update({
       where: { id: found.id },
@@ -98,20 +65,14 @@ export const collection = {
   }),
 
   deletePreview: authed.collection.deletePreview.handler(async ({ input, context, errors }) => {
-    const found = await prisma.collection.findFirst({
-      where: { id: input.id, ...memberOf(context.user.id) },
-      select: { id: true },
-    });
+    const found = await findMemberCollection(prisma, input.id, context.user.id);
     if (!found) throw errors.NOT_FOUND();
     return deletePreviewOf(prisma, found.id);
   }),
 
   delete: authed.collection.delete.handler(async ({ input, context, errors }) => {
     await prisma.$transaction(async (tx) => {
-      const found = await tx.collection.findFirst({
-        where: { id: input.id, ...memberOf(context.user.id) },
-        select: { id: true },
-      });
+      const found = await findMemberCollection(tx, input.id, context.user.id);
       if (!found) throw errors.NOT_FOUND();
       if (!input.confirmed) {
         throw errors.CONFIRMATION_REQUIRED({ data: await deletePreviewOf(tx, found.id) });

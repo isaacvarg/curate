@@ -1,6 +1,6 @@
 import type { BreadcrumbEntry, ItemDeletePreview } from "@repo/shared";
 import type { Prisma } from "@/generated/prisma/client";
-import { memberOf } from "./collection";
+import { findMemberCollection, findMemberItem, memberOf } from "./access";
 import { prisma } from "./db";
 import { authed } from "./orpc";
 import { lockCollection } from "./level";
@@ -84,10 +84,7 @@ export const item = {
   }),
 
   list: authed.item.list.handler(async ({ input, context, errors }) => {
-    const collection = await prisma.collection.findFirst({
-      where: { id: input.collectionId, ...memberOf(context.user.id) },
-      select: { id: true },
-    });
+    const collection = await findMemberCollection(prisma, input.collectionId, context.user.id);
     if (!collection) throw errors.NOT_FOUND();
     if (input.parentId !== undefined) {
       const parent = await prisma.item.findFirst({
@@ -123,10 +120,7 @@ export const item = {
   }),
 
   rename: authed.item.rename.handler(async ({ input, context, errors }) => {
-    const found = await prisma.item.findFirst({
-      where: { id: input.id, collection: memberOf(context.user.id) },
-      select: { id: true },
-    });
+    const found = await findMemberItem(prisma, input.id, context.user.id);
     if (!found) throw errors.NOT_FOUND();
     const row = await prisma.item.update({
       where: { id: found.id },
@@ -137,20 +131,14 @@ export const item = {
   }),
 
   deletePreview: authed.item.deletePreview.handler(async ({ input, context, errors }) => {
-    const found = await prisma.item.findFirst({
-      where: { id: input.id, collection: memberOf(context.user.id) },
-      select: { id: true },
-    });
+    const found = await findMemberItem(prisma, input.id, context.user.id);
     if (!found) throw errors.NOT_FOUND();
     return deletePreviewOf(prisma, found.id);
   }),
 
   delete: authed.item.delete.handler(async ({ input, context, errors }) => {
     await prisma.$transaction(async (tx) => {
-      const found = await tx.item.findFirst({
-        where: { id: input.id, collection: memberOf(context.user.id) },
-        select: { id: true },
-      });
+      const found = await findMemberItem(tx, input.id, context.user.id);
       if (!found) throw errors.NOT_FOUND();
       // Inserting a child takes a key-share lock on its parent, so this keeps
       // a new child from appearing between the check and the delete.
