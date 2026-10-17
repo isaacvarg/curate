@@ -1,4 +1,4 @@
-import { type Collection, defaultLevelName, defaultVerdict, verdictScaleSchema } from "@repo/shared";
+import { type Collection, defaultLevelName, defaultVerdict, type Level, verdictScaleSchema } from "@repo/shared";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "./db";
 import { authed } from "./orpc";
@@ -17,19 +17,28 @@ const collectionInclude = {
 
 type CollectionRow = Prisma.CollectionGetPayload<{ include: typeof collectionInclude }>;
 
+type LevelRow = Pick<
+  Prisma.LevelGetPayload<object>,
+  "id" | "name" | "position" | "overallVerdictName" | "overallVerdictScale"
+>;
+
+export function toLevel(level: LevelRow): Level {
+  return {
+    id: level.id,
+    name: level.name,
+    position: level.position,
+    overallVerdict: {
+      name: level.overallVerdictName,
+      scale: verdictScaleSchema.parse(level.overallVerdictScale),
+    },
+  };
+}
+
 function toCollection(row: CollectionRow): Collection {
   return {
     id: row.id,
     name: row.name,
-    levels: row.levels.map((level) => ({
-      id: level.id,
-      name: level.name,
-      position: level.position,
-      overallVerdict: {
-        name: level.overallVerdictName,
-        scale: verdictScaleSchema.parse(level.overallVerdictScale),
-      },
-    })),
+    levels: row.levels.map(toLevel),
     members: row.members.map(({ userId, role }) => ({ userId, role })),
   };
 }

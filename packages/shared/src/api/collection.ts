@@ -5,7 +5,7 @@ import { verdictScaleSchema } from "../verdict";
 // names are given.
 export const defaultLevelName = "Item";
 
-const nameSchema = z.string().trim().min(1, { message: "Enter a name." }).max(100);
+export const nameSchema = z.string().trim().min(1, { message: "Enter a name." }).max(100);
 
 export const collectionCreateInputSchema = z.object({
   name: nameSchema,
