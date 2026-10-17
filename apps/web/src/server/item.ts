@@ -3,8 +3,19 @@ import type { Prisma } from "@/generated/prisma/client";
 import { memberOf } from "./collection";
 import { prisma } from "./db";
 import { authed } from "./orpc";
+import { ownOverallRating, ownOverallRatingSelect } from "./rating";
 
 const itemSummarySelect = { id: true, name: true, levelId: true, parentId: true } as const;
+
+// An Item summary with the caller's own Overall Rating.
+function itemSummaryFor(userId: string) {
+  return { ...itemSummarySelect, ...ownOverallRatingSelect(userId) } as const;
+}
+
+function withOverallRating<T extends { overallRatings: Parameters<typeof ownOverallRating>[0] }>(row: T) {
+  const { overallRatings, ...rest } = row;
+  return { ...rest, overallRating: ownOverallRating(overallRatings) };
+}
 
 // Sort key first (creation order by default); id breaks ties for keys set
 // explicitly by a later slice.
@@ -50,7 +61,7 @@ export const item = {
       if (!parent) throw errors.INVALID_STRUCTURE();
     }
 
-    return prisma.item.create({
+    const created = await prisma.item.create({
       data: {
         collectionId: collection.id,
         levelId: level.id,
@@ -61,6 +72,8 @@ export const item = {
       },
       select: itemSummarySelect,
     });
+    // A new Item has no ratings yet.
+    return { ...created, overallRating: null };
   }),
 
   list: authed.item.list.handler(async ({ input, context, errors }) => {
@@ -76,21 +89,22 @@ export const item = {
       });
       if (!parent) throw errors.NOT_FOUND();
     }
-    return prisma.item.findMany({
+    const rows = await prisma.item.findMany({
       // No parent means the top Level: only top-Level Items have no parent.
       where: { collectionId: collection.id, parentId: input.parentId ?? null },
-      select: itemSummarySelect,
+      select: itemSummaryFor(context.user.id),
       orderBy: itemOrder,
     });
+    return rows.map(withOverallRating);
   }),
 
   get: authed.item.get.handler(async ({ input, context, errors }) => {
     const row = await prisma.item.findFirst({
       where: { id: input.id, collection: memberOf(context.user.id) },
-      select: { ...itemSummarySelect, collectionId: true, _count: { select: { children: true } } },
+      select: { ...itemSummaryFor(context.user.id), collectionId: true, _count: { select: { children: true } } },
     });
     if (!row) throw errors.NOT_FOUND();
-    const { _count, ...item } = row;
+    const { _count, ...item } = withOverallRating(row);
     return { ...item, breadcrumb: await breadcrumbOf(item.parentId), childCount: _count.children };
   }),
 };

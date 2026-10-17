@@ -1,20 +1,25 @@
 import { ORPCError, isDefinedError } from "@orpc/client";
+import type { VerdictScale } from "@repo/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "expo-router";
 import { useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { Button, ErrorText, Field } from "@/components/form";
 import { orpc, queryClient } from "@/lib/api";
+import { formatVerdict } from "@/lib/verdict";
 
 // The Items in a Collection under one parent, or at the top Level when there's
-// no parent, in sort key order. Each row opens the Item screen.
+// no parent, in sort key order, each with the caller's Verdict on `scale` (the
+// Items' Level's Overall Verdict scale). Each row opens the Item screen.
 export function ItemList({
   collectionId,
   parentId,
+  scale,
   emptyText,
 }: {
   collectionId: string;
   parentId?: string;
+  scale: VerdictScale;
   emptyText: string;
 }) {
   const items = useQuery(orpc.item.list.queryOptions({ input: { collectionId, parentId } }));
@@ -31,6 +36,9 @@ export function ItemList({
         <Link href={{ pathname: "/items/[id]", params: { id: item.id } }} asChild>
           <Pressable accessibilityRole="link" style={styles.row}>
             <Text style={styles.rowText}>{item.name}</Text>
+            {item.overallRating ? (
+              <Text style={styles.rowVerdict}>{formatVerdict(scale, item.overallRating.verdict)}</Text>
+            ) : null}
           </Pressable>
         </Link>
       )}
@@ -90,8 +98,17 @@ function createErrorMessage(error: CreateError): string {
 }
 
 const styles = StyleSheet.create({
-  row: { paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: "#ccc" },
-  rowText: { fontSize: 18 },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderColor: "#ccc",
+  },
+  rowText: { fontSize: 18, flexShrink: 1 },
+  rowVerdict: { fontSize: 16, color: "#666" },
   empty: { color: "#666", fontSize: 16 },
   add: { gap: 8 },
 });

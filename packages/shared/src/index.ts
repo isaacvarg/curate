@@ -9,6 +9,7 @@ export {
   type Level,
 } from "./api/collection";
 export type { BreadcrumbEntry, Item, ItemSummary } from "./api/item";
+export type { OverallRating } from "./api/rating";
 export {
   defaultVerdict,
   toUnitInterval,

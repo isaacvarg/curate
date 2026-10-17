@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { overallRatingSchema } from "./rating";
 
 const nameSchema = z.string().trim().min(1, { message: "Enter a name." }).max(200);
 
@@ -18,13 +19,14 @@ export const itemListInputSchema = z.object({
 
 export const itemGetInputSchema = z.object({ id: z.string() });
 
-// An Item as it appears in lists. The rating ticket adds the caller's Overall
-// Rating here and to `item.get`.
+// An Item as it appears in lists, with the caller's own Overall Rating (null
+// when they haven't rated it). Other Users' ratings are never included.
 export const itemSummarySchema = z.object({
   id: z.string(),
   name: z.string(),
   levelId: z.string(),
   parentId: z.string().nullable(),
+  overallRating: overallRatingSchema.nullable(),
 });
 
 export const breadcrumbEntrySchema = z.object({

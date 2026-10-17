@@ -35,8 +35,12 @@ export default function CollectionScreen() {
     <View style={formStyles.screen}>
       <Stack.Screen options={{ title: name }} />
       <Text style={styles.levels}>{levels.map((level) => level.name).join(" › ")}</Text>
-      {topLevel ? <AddItem collectionId={id} level={topLevel} /> : null}
-      <ItemList collectionId={id} emptyText="Nothing here yet." />
+      {topLevel ? (
+        <>
+          <AddItem collectionId={id} level={topLevel} />
+          <ItemList collectionId={id} scale={topLevel.overallVerdict.scale} emptyText="Nothing here yet." />
+        </>
+      ) : null}
     </View>
   );
 }

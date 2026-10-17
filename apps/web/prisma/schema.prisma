@@ -21,6 +21,7 @@ model User {
   authSessions          AuthSession[]
   accounts              Account[]
   collectionMemberships CollectionMember[]
+  overallRatings        OverallRating[]
 
   @@map("user")
 }
@@ -141,29 +142,53 @@ model Level {
 // Level positions never change once Items exist (only the deepest, empty
 // Level can be removed), so the copies can't go stale.
 model Item {
-  id                  String     @id @default(uuid(7))
+  id                  String          @id @default(uuid(7))
   collectionId        String
-  collection          Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  collection          Collection      @relation(fields: [collectionId], references: [id], onDelete: Cascade)
   levelId             String
   levelPosition       Int
   // NoAction (checked at the end of the statement) rather than Restrict, so
   // deleting a Collection can cascade to its Levels and Items together.
-  level               Level      @relation(fields: [levelId, collectionId, levelPosition], references: [id, collectionId, position], onDelete: NoAction)
+  level               Level           @relation(fields: [levelId, collectionId, levelPosition], references: [id, collectionId, position], onDelete: NoAction)
   parentId            String?
   parentLevelPosition Int?
-  parent              Item?      @relation("ItemChildren", fields: [parentId, collectionId, parentLevelPosition], references: [id, collectionId, levelPosition], onDelete: Cascade)
-  children            Item[]     @relation("ItemChildren")
+  parent              Item?           @relation("ItemChildren", fields: [parentId, collectionId, parentLevelPosition], references: [id, collectionId, levelPosition], onDelete: Cascade)
+  children            Item[]          @relation("ItemChildren")
+  overallRatings      OverallRating[]
   name                String
   // Items are listed by this. It defaults to creation order, so Episode 2
   // never comes before Episode 1; bulk creation of numbered children (a
   // later slice) relies on it.
-  sortKey             BigInt     @default(autoincrement())
-  createdAt           DateTime   @default(now())
-  updatedAt           DateTime   @updatedAt
+  sortKey             BigInt          @default(autoincrement())
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
 
   @@unique([id, collectionId, levelPosition])
   @@index([collectionId, parentId, sortKey])
   @@index([parentId])
   @@index([levelId])
   @@map("item")
+}
+
+// A User's standing opinion of an Item (FR-2.6); in this slice only its
+// Verdict. One per (Item, User). The Verdict is stored as the raw value on the
+// Item's Level's Overall Verdict scale: verdictNumber for a numeric scale,
+// verdictLabel for a label scale, exactly one set (hand-written CHECK
+// overall_rating_verdict_check). The 0–1 form is always computed with
+// toUnitInterval from @repo/shared and never stored, so a rescale can't leave
+// stale copies.
+model OverallRating {
+  id            String   @id @default(uuid(7))
+  itemId        String
+  item          Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verdictNumber Float?
+  verdictLabel  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([itemId, userId])
+  @@index([userId])
+  @@map("overall_rating")
 }

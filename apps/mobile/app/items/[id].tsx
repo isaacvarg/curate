@@ -5,6 +5,7 @@ import { Fragment } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { ErrorText, formStyles } from "@/components/form";
 import { AddItem, ItemList } from "@/components/items";
+import { VerdictControl } from "@/components/verdict";
 import { orpc } from "@/lib/api";
 
 // An Item: its breadcrumb (Collection, then ancestors from the top Level),
@@ -63,12 +64,22 @@ export default function ItemScreen() {
           </Fragment>
         ))}
       </View>
-      {level ? <Text style={styles.level}>{level.name}</Text> : null}
+      {level ? (
+        <>
+          <Text style={styles.level}>{level.name}</Text>
+          <VerdictControl itemId={id} verdict={level.overallVerdict} overallRating={item.data.overallRating} />
+        </>
+      ) : null}
 
       {childLevel ? (
         <>
           <AddItem collectionId={collection.data.id} level={childLevel} parentId={id} />
-          <ItemList collectionId={collection.data.id} parentId={id} emptyText={`No ${childLevel.name} yet.`} />
+          <ItemList
+            collectionId={collection.data.id}
+            parentId={id}
+            scale={childLevel.overallVerdict.scale}
+            emptyText={`No ${childLevel.name} yet.`}
+          />
         </>
       ) : null}
     </View>

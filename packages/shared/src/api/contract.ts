@@ -6,6 +6,7 @@ import {
   collectionSchema,
   collectionSummarySchema,
 } from "./collection";
+import { overallRatingSchema, ratingClearOverallInputSchema, ratingSetOverallInputSchema } from "./rating";
 import { itemCreateInputSchema, itemGetInputSchema, itemListInputSchema, itemSchema, itemSummarySchema } from "./item";
 
 // Every non-auth procedure requires a signed-in User and can fail with
@@ -23,6 +24,15 @@ const collectionNotFound = { NOT_FOUND: { message: "Collection not found." } } a
 // directly above.
 const invalidStructure = {
   INVALID_STRUCTURE: { message: "An Item's parent must be in its Collection, at the Level directly above." },
+} as const;
+
+// An Item in a Collection the caller isn't a member of reads as missing.
+const itemNotFound = { NOT_FOUND: { message: "Item not found." } } as const;
+
+// A Verdict value that isn't on the Item's Level's Overall Verdict scale:
+// outside its range, off its step, not one of its labels, or the wrong kind.
+const valueOutOfScale = {
+  VALUE_OUT_OF_SCALE: { message: "That value isn't on this Verdict's scale." },
 } as const;
 
 export const userSchema = z.object({
@@ -59,6 +69,16 @@ export const contract = {
       .errors({ NOT_FOUND: { message: "Item not found." } })
       .input(itemGetInputSchema)
       .output(itemSchema),
+  },
+  rating: {
+    // Creates or replaces the caller's Overall Rating of the Item; there's
+    // never more than one per (Item, User).
+    setOverall: authed
+      .errors({ ...itemNotFound, ...valueOutOfScale })
+      .input(ratingSetOverallInputSchema)
+      .output(overallRatingSchema),
+    // Leaves the Item unrated by the caller. Clearing an unrated Item succeeds.
+    clearOverall: authed.errors(itemNotFound).input(ratingClearOverallInputSchema).output(z.void()),
   },
 };
 

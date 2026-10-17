@@ -2,6 +2,7 @@ import { collection } from "./collection";
 import { prisma } from "./db";
 import { item } from "./item";
 import { authed, os } from "./orpc";
+import { rating } from "./rating";
 
 export const router = os.router({
   user: {
@@ -14,4 +15,5 @@ export const router = os.router({
   },
   collection,
   item,
+  rating,
 });
