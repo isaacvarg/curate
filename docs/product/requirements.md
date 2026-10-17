@@ -116,6 +116,15 @@ Testable requirements derived from the design session. Terms in **bold** are def
 - **FR-10.2** (v1) Full export of a User's data, or of one Collection, as CSV and JSON, media included. The JSON document is canonical and versioned, and the CSVs are derived views ([ADR 0013](../adr/0013-exports-are-a-versioned-json-document-with-derived-csv-views.md)).
 - **FR-10.3** (Later) Importers for specific apps (BG Stats, Untappd, Goodreads).
 
+## 11. Accounts
+
+- **FR-11.1** (v1) A User signs up and signs in with an email and a password ([ADR 0005](../adr/0005-orpc-and-better-auth.md)). Sign in with Apple and Google come later.
+- **FR-11.2** (v1) A new User is sent a link to verify their email. The app works before verifying, but publishing a Rating Card link and creating an invite need a verified email.
+- **FR-11.3** (v1) A User who forgot their password can reset it through an emailed link. The request never reveals whether an account exists, and a reset signs out every device.
+- **FR-11.4** (v1) A User can change their email (confirmed from the new address, with a revert link sent to the old one) and their password, after re-entering their password.
+- **FR-11.5** (v1) A User can see the devices they're signed in on and sign any of them out.
+- **FR-11.6** (v1) A User can delete their account from the app after re-entering their password and being offered an Export. The account is hidden at once and purged after 30 days unless they sign in and keep it. In shared Collections, the purge removes them as a leave does, without making a copy ([ADR 0015](../adr/0015-account-deletion-is-a-scheduled-leave-then-a-purge.md)).
+
 ---
 
 ## Non-functional requirements

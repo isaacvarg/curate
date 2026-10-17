@@ -164,6 +164,15 @@ Tags were confirmed as ad-hoc, free-form groupings that cut across Collections a
 | 11.3 | Sessions with other Users (social phase)? | The Session **lives in the logger's Collection** and appears in each User Participant's history, with an offer to create a **Linked Item**. Participants edit **only their own** Ratings, Observations and notes. **Scores** are edited by the logger, or by a participant for their own column from their own phone. | Opinions belong to the person, and the table record belongs to the logger. |
 | 11.4 | Editing in household Collections? | **Any Collection Member** can edit a Session's shared parts (date, Participants, Scores, Session notes). Personal Ratings and Observations are editable only by their owner. | Whoever holds the phone logs the game. Refined in slice 10: concurrent saves are patched cell by cell from their base revision, and a replaced change is reported to its author. See [ADR 0012](../adr/0012-shared-saves-are-patched-from-a-base-revision.md). |
 
+## Round 12: Accounts (slice 14)
+
+| # | Question | Decision | Reasoning |
+|---|---|---|---|
+| 12.1 | What does the accounts slice cover? | **Recovery and account management:** email verification, password reset, changing email and password, signed-in devices, and account deletion. Sign in with Apple and Google comes later. | Slice 1 left recovery for "before any real users", and both app stores require in-app account deletion. Offering Google sign-in forces Sign in with Apple on iOS, and linking social logins to existing accounts is its own problem. |
+| 12.2 | What happens to shared Collections when an account is deleted? | **The original side of the leave plan runs, and no copy is made.** The deleted User becomes a Guest named after them in the other members' Sessions, keeping their Scores. Their opinions go with them. If they own the Collection, ownership passes to the longest-standing member. | Leaving already removes a person without breaking anyone's history (decision 8.3). Blocking deletion until every Collection is left by hand only adds steps, and a "Former member" Guest would make old score pads unreadable. See [ADR 0015](../adr/0015-account-deletion-is-a-scheduled-leave-then-a-purge.md). |
+| 12.3 | When does a deletion happen? | **After a 30-day grace period.** The account is signed out and hidden from every public surface at once. Signing in during the period offers to keep it. | Years of hobby data shouldn't disappear because of a mistaken tap or a stolen password. See [ADR 0015](../adr/0015-account-deletion-is-a-scheduled-leave-then-a-purge.md). |
+| 12.4 | How is email sent? | **Resend, through its API.** | The user's choice over a provider-neutral SMTP mailer. It's the quickest to build, and switching later means changing one transport. |
+
 ---
 
 ## Deferred to their own sessions

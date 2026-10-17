@@ -29,3 +29,4 @@ Output of the product design session (2026-10-14 → 2026-10-16). Start here.
 | [0012](../adr/0012-shared-saves-are-patched-from-a-base-revision.md) | Shared saves are patched from a base revision |
 | [0013](../adr/0013-exports-are-a-versioned-json-document-with-derived-csv-views.md) | Exports are a versioned JSON document with derived CSV views |
 | [0014](../adr/0014-rating-card-links-are-allowlisted-snapshots-on-the-neutral-host.md) | Rating Card links are allowlisted snapshots on the neutral host |
+| [0015](../adr/0015-account-deletion-is-a-scheduled-leave-then-a-purge.md) | Account deletion is a scheduled leave from every shared Collection, then a purge |
