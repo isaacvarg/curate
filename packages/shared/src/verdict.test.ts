@@ -33,9 +33,20 @@ describe("verdict scale validation", () => {
     ["no labels", { kind: "labels", labels: [] }],
     ["a single label", { kind: "labels", labels: ["Good"] }],
     ["duplicate labels", { kind: "labels", labels: ["Meh", "Good", "Meh"] }],
+    ["labels that are duplicates once trimmed", { kind: "labels", labels: ["A", " A"] }],
+    ["an empty label", { kind: "labels", labels: ["", "Good"] }],
+    ["a blank label", { kind: "labels", labels: ["   ", "Good"] }],
+    ["a label over 50 characters", { kind: "labels", labels: ["x".repeat(51), "Good"] }],
     ["an unknown kind", { kind: "stars", count: 5 }],
   ])("rejects %s", (_, scale) => {
     expect(verdictScaleSchema.safeParse(scale).success).toBe(false);
+  });
+
+  it("trims labels", () => {
+    expect(verdictScaleSchema.parse({ kind: "labels", labels: [" Down ", "Up"] })).toEqual({
+      kind: "labels",
+      labels: ["Down", "Up"],
+    });
   });
 });
 
@@ -64,6 +75,16 @@ describe("verdict value validation", () => {
     ["a number on a label scale", tiers, 2],
   ])("rejects %s", (_, scale, value) => {
     expect(verdictValueSchema(scale).safeParse(value).success).toBe(false);
+  });
+
+  it.each([
+    ["a hair above a whole star", fiveStars, 4.0000000001, 4],
+    ["a hair below a whole star", fiveStars, 2.9999999999, 3],
+    ["a float sum on a tenths scale", tenths, 0.1 + 0.2, 0.3],
+    ["a hair off a half star", halfStars, 3.5000000001, 3.5],
+    ["a hair off the top of a tenths scale", tenths, 9.99999999999, 10],
+  ])("snaps %s to exactly that step", (_, scale, value, expected) => {
+    expect(verdictValueSchema(scale).parse(value)).toBe(expected);
   });
 });
 

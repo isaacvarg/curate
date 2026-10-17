@@ -22,11 +22,18 @@ const numericScaleSchema = z
     path: ["step"],
   });
 
+const verdictLabelSchema = z
+  .string()
+  .trim()
+  .min(1, { message: "Labels can't be blank." })
+  .max(50, { message: "Labels must be at most 50 characters." });
+
 // Labels are ordered worst first, so a label's position is its rank.
+// Distinctness is checked after trimming, so "A" and " A" count as the same.
 const labelsScaleSchema = z.object({
   kind: z.literal("labels"),
   labels: z
-    .array(z.string())
+    .array(verdictLabelSchema)
     .min(2, { message: "A label scale needs at least two labels." })
     .refine((labels) => new Set(labels).size === labels.length, { message: "Labels must be distinct." }),
 });
@@ -34,6 +41,8 @@ const labelsScaleSchema = z.object({
 export const verdictScaleSchema = z.discriminatedUnion("kind", [numericScaleSchema, labelsScaleSchema]);
 
 export type VerdictScale = z.infer<typeof verdictScaleSchema>;
+
+export type NumericScale = Extract<VerdictScale, { kind: "numeric" }>;
 
 export type VerdictValue = number | string;
 
@@ -61,7 +70,23 @@ export function verdictValueSchema(scale: VerdictScale): z.ZodType<VerdictValue>
     .max(scale.max, { message: `Must be at most ${scale.max}.` })
     .refine((v) => isWholeNumberOfSteps(v - scale.min, scale.step), {
       message: `Must be in steps of ${scale.step}.`,
-    });
+    })
+    .transform((v) => snapToStep(scale, v));
+}
+
+// Accepted values are only within tolerance of a step, so store the step
+// itself: min + k·step, rounded to the decimals of min and step to drop the
+// float error that sum brings (0.1 + 0.2 → 0.3).
+function snapToStep(scale: NumericScale, value: number): number {
+  const steps = Math.round((value - scale.min) / scale.step);
+  const decimals = Math.max(decimalPlaces(scale.min), decimalPlaces(scale.step));
+  return Number((scale.min + steps * scale.step).toFixed(Math.min(decimals, 100)));
+}
+
+function decimalPlaces(n: number): number {
+  const [mantissa = "", exponent] = String(n).split("e");
+  const fraction = mantissa.split(".")[1]?.length ?? 0;
+  return Math.max(0, fraction - Number(exponent ?? 0));
 }
 
 // Maps a value to 0 (worst) .. 1 (best), the common ground every comparison is
