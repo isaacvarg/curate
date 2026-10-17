@@ -77,10 +77,10 @@ Every feature agreed in the design session, grouped by area and tagged by phase.
 
 | Feature | Phase | Notes |
 |---|---|---|
-| A QR **Label** per Item, encoding an https URL | v1 | Works with any phone camera; opens the app if it's installed |
+| A QR **Label** per Item, encoding an https URL | v1 | Works with any phone camera; opens the app if it's installed. An opaque code on a neutral Label domain ([ADR 0009](../adr/0009-labels-encode-an-opaque-code-on-a-neutral-domain.md)) |
 | Configurable scan action per Collection: start a Session or open the Item | v1 | A started Session pre-fills date, open Occasion and usual Participants |
 | Printable PDFs: sticker-sheet grids plus ex libris designs | v1 | |
-| Non-owner scan: public Item page, or a minimal "belongs to…" page | v1 | |
+| Non-owner scan: public Item page, or a minimal "belongs to…" page | v1 | v1 ships the minimal page. The public Item page comes with Visibility (Social) |
 | Scanned Label shows Status (e.g. Sold) after the Item leaves | v1 | The Label stays tied to the original Item |
 | Non-owner User joins or logs the Session from their own account | Social | |
 | Label designer | Later | Could reuse the node or design editor |
