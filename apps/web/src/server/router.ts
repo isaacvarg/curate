@@ -1,6 +1,7 @@
 import { collection } from "./collection";
 import { prisma } from "./db";
 import { item } from "./item";
+import { level } from "./level";
 import { authed, os } from "./orpc";
 import { rating } from "./rating";
 
@@ -14,6 +15,7 @@ export const router = os.router({
     }),
   },
   collection,
+  level,
   item,
   rating,
 });
