@@ -5,12 +5,14 @@ import { verdictScaleSchema } from "../verdict";
 // names are given.
 export const defaultLevelName = "Item";
 
-export const nameSchema = z.string().trim().min(1, { message: "Enter a name." }).max(100);
+// The name of a Collection, a Level or a Verdict. Item names have their own,
+// longer limit (`itemNameSchema`).
+export const shortNameSchema = z.string().trim().min(1, { message: "Enter a name." }).max(100);
 
 export const collectionCreateInputSchema = z.object({
-  name: nameSchema,
+  name: shortNameSchema,
   // Top Level first.
-  levels: z.array(nameSchema).min(1, { message: "Add at least one Level." }).max(10).optional(),
+  levels: z.array(shortNameSchema).min(1, { message: "Add at least one Level." }).max(10).optional(),
 });
 
 export const levelSchema = z.object({
@@ -38,7 +40,7 @@ export const collectionSchema = z.object({
 
 export const collectionGetInputSchema = z.object({ id: z.string() });
 
-export const collectionRenameInputSchema = z.object({ id: z.string(), name: nameSchema });
+export const collectionRenameInputSchema = z.object({ id: z.string(), name: shortNameSchema });
 
 // What deleting a Collection would remove. Overall Ratings are every
 // Collection Member's, not just the caller's.

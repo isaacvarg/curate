@@ -1,14 +1,15 @@
 import { z } from "zod";
 import { overallRatingSchema } from "./rating";
 
-const nameSchema = z.string().trim().min(1, { message: "Enter a name." }).max(200);
+// Longer than `shortNameSchema`: Item names include titles like episode names.
+const itemNameSchema = z.string().trim().min(1, { message: "Enter a name." }).max(200);
 
 export const itemCreateInputSchema = z.object({
   collectionId: z.string(),
   levelId: z.string(),
   // Omitted for an Item at the top Level; required at every Level below it.
   parentId: z.string().optional(),
-  name: nameSchema,
+  name: itemNameSchema,
 });
 
 export const itemListInputSchema = z.object({
@@ -19,7 +20,7 @@ export const itemListInputSchema = z.object({
 
 export const itemGetInputSchema = z.object({ id: z.string() });
 
-export const itemRenameInputSchema = z.object({ id: z.string(), name: nameSchema });
+export const itemRenameInputSchema = z.object({ id: z.string(), name: itemNameSchema });
 
 // What deleting an Item would remove along with it: its descendants at every
 // Level below, and every Collection Member's Overall Ratings of the Item and

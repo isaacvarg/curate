@@ -48,6 +48,9 @@ const invalidStructure = {
 // An Item in a Collection the caller isn't a member of reads as missing.
 const itemNotFound = { NOT_FOUND: { message: "Item not found." } } as const;
 
+// Likewise a Level in a Collection the caller isn't a member of.
+const levelNotFound = { NOT_FOUND: { message: "Level not found." } } as const;
+
 // A Verdict value that isn't on the Item's Level's Overall Verdict scale:
 // outside its range, off its step, not one of its labels, or the wrong kind.
 const valueOutOfScale = {
@@ -93,11 +96,7 @@ export const contract = {
       .output(z.void()),
   },
   level: {
-    // A Level in a Collection the caller isn't a member of reads as missing.
-    rename: authed
-      .errors({ NOT_FOUND: { message: "Level not found." } })
-      .input(levelRenameInputSchema)
-      .output(levelSchema),
+    rename: authed.errors(levelNotFound).input(levelRenameInputSchema).output(levelSchema),
     // Below the current deepest Level, with the default Overall Verdict. Only
     // the deepest Level can be added (or removed), so Levels are never
     // inserted mid-structure and existing positions never change.
@@ -120,7 +119,7 @@ export const contract = {
     // raw values are never reinterpreted on a different scale.
     updateVerdict: authed
       .errors({
-        NOT_FOUND: { message: "Level not found." },
+        ...levelNotFound,
         SCALE_LOCKED: {
           message: "This scale is locked because Items at this Level already have ratings.",
           data: z.object({ ratingCount: z.number().int() }),
@@ -140,11 +139,7 @@ export const contract = {
       .errors({ NOT_FOUND: { message: "Collection or parent Item not found." } })
       .input(itemListInputSchema)
       .output(itemSummarySchema.array()),
-    // An Item in a Collection the caller isn't a member of reads as missing.
-    get: authed
-      .errors({ NOT_FOUND: { message: "Item not found." } })
-      .input(itemGetInputSchema)
-      .output(itemSchema),
+    get: authed.errors(itemNotFound).input(itemGetInputSchema).output(itemSchema),
     rename: authed.errors(itemNotFound).input(itemRenameInputSchema).output(itemSummarySchema),
     deletePreview: authed.errors(itemNotFound).input(itemGetInputSchema).output(itemDeletePreviewSchema),
     // An Item with no children is deleted straight away. One with children
