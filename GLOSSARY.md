@@ -128,6 +128,10 @@ _Avoid_: Quest, goal, achievement
 A packaged setup for a kind of Collection (Levels, Attributes, Rating, Observation and Score fields, Score Cards, Statuses), published as versions from a source Collection and copied into a Collection when adopted. Later versions are offered change by change, never applied. Official Templates are published by curators, and community Templates come later.
 _Avoid_: Preset, blueprint
 
+**Export**:
+A downloadable archive of a User's data, for their whole account or one Collection: a versioned JSON document that is the canonical record, CSV views derived from it, and media originals. In a shared Collection it holds the shared parts and only the exporting member's personal data.
+_Avoid_: Backup, dump, download
+
 ### Social
 
 **Visibility**:
