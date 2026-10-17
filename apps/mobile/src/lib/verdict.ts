@@ -1,4 +1,4 @@
-import { type VerdictScale, type VerdictValue, verdictValueSchema } from "@repo/shared";
+import { type NumericScale, type VerdictScale, type VerdictValue, verdictValueSchema } from "@repo/shared";
 
 // Up to this many whole stars from 1 reads naturally as a star row.
 const MAX_STARS = 10;
@@ -6,8 +6,6 @@ const MAX_STARS = 10;
 // Beyond this many values (0–10 has 11), a row of chips gets unwieldy and a
 // stepper with a number field takes over.
 const MAX_CHOICES = 11;
-
-type NumericScale = Extract<VerdictScale, { kind: "numeric" }>;
 
 function isStarScale(scale: VerdictScale): boolean {
   return scale.kind === "numeric" && scale.min === 1 && scale.step === 1 && scale.max <= MAX_STARS;
@@ -49,14 +47,21 @@ export function stepVerdict(scale: NumericScale, current: number | null, directi
   return valueAt(scale, Math.min(last, Math.max(0, steps)));
 }
 
-// A typed-in Verdict, checked with the same rules the server uses.
-export function parseVerdictInput(scale: NumericScale, text: string): { value: number } | { error: string } {
+// A number typed into a field; NaN when it's blank or not a number (Number("")
+// would be 0).
+export function parseNumberField(text: string): number {
   const trimmed = text.trim();
-  const number = trimmed === "" ? Number.NaN : Number(trimmed);
+  return trimmed === "" ? Number.NaN : Number(trimmed);
+}
+
+// A typed-in Verdict, checked with the same rules the server uses (and snapped
+// to its step the same way).
+export function parseVerdictInput(scale: NumericScale, text: string): { value: number } | { error: string } {
+  const number = parseNumberField(text);
   if (!Number.isFinite(number)) return { error: "Enter a number." };
   const parsed = verdictValueSchema(scale).safeParse(number);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "That isn't on this scale." };
-  return { value: number };
+  return { value: parsed.data as number };
 }
 
 // A Verdict as shown next to an Item: filled and empty stars on a star scale,

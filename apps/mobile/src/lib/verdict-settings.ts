@@ -1,4 +1,5 @@
 import { type VerdictScale, verdictScaleSchema } from "@repo/shared";
+import { parseNumberField } from "./verdict";
 
 // A Verdict scale as typed into the Level settings form, before it's checked.
 export type ScaleDraft =
@@ -9,11 +10,6 @@ export type ScaleDraft =
 export function toScaleDraft(scale: VerdictScale): ScaleDraft {
   if (scale.kind === "labels") return { kind: "labels", labels: scale.labels.join("\n") };
   return { kind: "numeric", min: String(scale.min), max: String(scale.max), step: String(scale.step) };
-}
-
-function toNumber(text: string): number {
-  const trimmed = text.trim();
-  return trimmed === "" ? Number.NaN : Number(trimmed);
 }
 
 // The scale a draft describes, checked with the shared scale rules the
@@ -27,7 +23,7 @@ export function parseScaleDraft(draft: ScaleDraft): { scale: VerdictScale } | { 
       .filter((label) => label !== "");
     candidate = { kind: "labels", labels };
   } else {
-    const [min, max, step] = [toNumber(draft.min), toNumber(draft.max), toNumber(draft.step)];
+    const [min, max, step] = [parseNumberField(draft.min), parseNumberField(draft.max), parseNumberField(draft.step)];
     if (![min, max, step].every(Number.isFinite)) return { error: "Minimum, maximum and step must be numbers." };
     candidate = { kind: "numeric", min, max, step };
   }

@@ -1,4 +1,4 @@
-import type { OverallRating, Verdict, VerdictScale, VerdictValue } from "@repo/shared";
+import type { NumericScale, OverallRating, Verdict, VerdictValue } from "@repo/shared";
 import { isDefinedError } from "@orpc/client";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
@@ -95,7 +95,7 @@ function VerdictStepper({
   busy,
   onSave,
 }: {
-  scale: Extract<VerdictScale, { kind: "numeric" }>;
+  scale: NumericScale;
   current: number | null;
   busy: boolean;
   onSave: (value: number) => void;
