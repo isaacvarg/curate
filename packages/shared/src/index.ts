@@ -8,6 +8,7 @@ export {
   defaultLevelName,
   type Level,
 } from "./api/collection";
+export type { BreadcrumbEntry, Item, ItemSummary } from "./api/item";
 export {
   defaultVerdict,
   toUnitInterval,

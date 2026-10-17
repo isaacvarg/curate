@@ -26,6 +26,7 @@ export default function RootLayout() {
           <Stack.Screen name="index" options={{ title: "Collections" }} />
           <Stack.Screen name="collections/new" options={{ title: "New Collection" }} />
           <Stack.Screen name="collections/[id]" options={{ title: "" }} />
+          <Stack.Screen name="items/[id]" options={{ title: "" }} />
         </Stack.Protected>
         <Stack.Protected guard={!signedIn}>
           <Stack.Screen name="sign-in" options={{ title: "Sign in" }} />

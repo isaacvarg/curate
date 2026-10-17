@@ -83,6 +83,7 @@ model Collection {
   updatedAt DateTime           @updatedAt
   members   CollectionMember[]
   levels    Level[]
+  items     Item[]
 
   @@map("collection")
 }
@@ -121,7 +122,48 @@ model Level {
   overallVerdictScale Json
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
+  items               Item[]
 
   @@unique([collectionId, position])
+  // Target of Item's composite foreign key, so the database itself checks
+  // that an Item's Level is in the Item's Collection at the copied position.
+  @@unique([id, collectionId, position])
   @@map("level")
+}
+
+// Structure (FR-1.3, ADR 0003), backed by the database:
+// - the composite foreign key to Level means the Level is in the Item's
+//   Collection, and levelPosition is a copy of that Level's position;
+// - the composite foreign key to the parent means the parent is in the same
+//   Collection, and parentLevelPosition is a copy of the parent's position;
+// - a hand-written CHECK (item_structure_check) says a top-Level Item has no
+//   parent and any other Item's parent sits at the Level directly above.
+// Level positions never change once Items exist (only the deepest, empty
+// Level can be removed), so the copies can't go stale.
+model Item {
+  id                  String     @id @default(uuid(7))
+  collectionId        String
+  collection          Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  levelId             String
+  levelPosition       Int
+  // NoAction (checked at the end of the statement) rather than Restrict, so
+  // deleting a Collection can cascade to its Levels and Items together.
+  level               Level      @relation(fields: [levelId, collectionId, levelPosition], references: [id, collectionId, position], onDelete: NoAction)
+  parentId            String?
+  parentLevelPosition Int?
+  parent              Item?      @relation("ItemChildren", fields: [parentId, collectionId, parentLevelPosition], references: [id, collectionId, levelPosition], onDelete: Cascade)
+  children            Item[]     @relation("ItemChildren")
+  name                String
+  // Items are listed by this. It defaults to creation order, so Episode 2
+  // never comes before Episode 1; bulk creation of numbered children (a
+  // later slice) relies on it.
+  sortKey             BigInt     @default(autoincrement())
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  @@unique([id, collectionId, levelPosition])
+  @@index([collectionId, parentId, sortKey])
+  @@index([parentId])
+  @@index([levelId])
+  @@map("item")
 }

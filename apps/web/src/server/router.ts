@@ -1,5 +1,6 @@
 import { collection } from "./collection";
 import { prisma } from "./db";
+import { item } from "./item";
 import { authed, os } from "./orpc";
 
 export const router = os.router({
@@ -12,4 +13,5 @@ export const router = os.router({
     }),
   },
   collection,
+  item,
 });
