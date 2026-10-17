@@ -1,0 +1,17 @@
+node_modules/
+.env
+.env.local
+*.tsbuildinfo
+coverage/
+
+# Next.js
+apps/web/.next/
+apps/web/next-env.d.ts
+apps/web/src/generated/
+
+# Expo
+apps/mobile/.expo/
+apps/mobile/dist/
+apps/mobile/ios/
+apps/mobile/android/
+apps/mobile/expo-env.d.ts
