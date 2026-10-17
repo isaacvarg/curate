@@ -1,4 +1,3 @@
-import { ORPCError } from "@orpc/client";
 import { defaultLevelName } from "@repo/shared";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
@@ -6,6 +5,7 @@ import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Button, ErrorText, Field } from "@/components/form";
 import { orpc, queryClient } from "@/lib/api";
+import { errorMessage } from "@/lib/errors";
 
 export default function NewCollection() {
   const router = useRouter();
@@ -62,7 +62,14 @@ export default function NewCollection() {
         <Text style={styles.add}>+ Add Level</Text>
       </Pressable>
 
-      <ErrorText>{create.error ? errorMessage(create.error) : null}</ErrorText>
+      <ErrorText>
+        {create.error
+          ? errorMessage(create.error, {
+              fallback: "Couldn't create the Collection.",
+              badRequest: "Give the Collection and every Level a name.",
+            })
+          : null}
+      </ErrorText>
       <Button
         title={create.isPending ? "Creating…" : "Create Collection"}
         onPress={submit}
@@ -70,14 +77,6 @@ export default function NewCollection() {
       />
     </ScrollView>
   );
-}
-
-function errorMessage(error: unknown): string {
-  if (!(error instanceof ORPCError)) return "Couldn't reach the server. Try again.";
-  // Input validation failures come back as BAD_REQUEST.
-  if (error.code === "BAD_REQUEST") return "Give the Collection and every Level a name.";
-  if (error.code === "UNAUTHORIZED") return error.message;
-  return "Couldn't create the Collection. Try again.";
 }
 
 const styles = StyleSheet.create({

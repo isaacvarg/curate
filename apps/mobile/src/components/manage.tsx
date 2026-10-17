@@ -1,4 +1,3 @@
-import { ORPCError } from "@orpc/client";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Button, ErrorText, Field } from "@/components/form";
@@ -78,15 +77,6 @@ export function ConfirmDelete({
       </View>
     </View>
   );
-}
-
-export function errorMessage(error: unknown, fallback: string): string {
-  if (!(error instanceof ORPCError)) return "Couldn't reach the server. Try again.";
-  // Typed errors (NOT_FOUND, CONFIRMATION_REQUIRED...) carry a message meant for people.
-  if (error.defined) return error.message;
-  // Input validation failures come back as BAD_REQUEST.
-  if (error.code === "BAD_REQUEST") return "Give it a name.";
-  return `${fallback} Try again.`;
 }
 
 export const manageStyles = StyleSheet.create({

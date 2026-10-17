@@ -1,4 +1,4 @@
-import { ORPCError, isDefinedError } from "@orpc/client";
+import { isDefinedError } from "@orpc/client";
 import { defaultVerdict, type Level, sameVerdictScale } from "@repo/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Button, ErrorText, Field } from "@/components/form";
 import { orpc, queryClient } from "@/lib/api";
+import { errorMessage } from "@/lib/errors";
 import {
   describeScale,
   parseScaleDraft,
@@ -87,7 +88,9 @@ function LevelRow({ level }: { level: Level }) {
           </Pressable>
         ) : null}
       </View>
-      <ErrorText>{rename.error ? errorMessage(rename.error, "Couldn't rename it.") : null}</ErrorText>
+      <ErrorText>
+        {rename.error ? errorMessage(rename.error, { fallback: "Couldn't rename it.", badRequest: levelNameMissing }) : null}
+      </ErrorText>
       <VerdictSettings level={level} />
     </View>
   );
@@ -127,7 +130,10 @@ function VerdictSettings({ level }: { level: Level }) {
     if (isDefinedError(update.error) && update.error.code === "SCALE_LOCKED") {
       error = scaleLockedMessage(update.error.data.ratingCount);
     } else {
-      error = errorMessage(update.error, "Couldn't save the Verdict.", "Give the Verdict a name.");
+      error = errorMessage(update.error, {
+        fallback: "Couldn't save the Verdict.",
+        badRequest: "Give the Verdict a name.",
+      });
     }
   }
 
@@ -229,7 +235,9 @@ function AppendDeepest({ collectionId }: { collectionId: string }) {
     <View style={styles.level}>
       <Text style={styles.heading}>Add a deepest Level</Text>
       <Field placeholder="Name, e.g. Episode" value={name} onChangeText={setName} />
-      <ErrorText>{append.error ? errorMessage(append.error, "Couldn't add it.") : null}</ErrorText>
+      <ErrorText>
+        {append.error ? errorMessage(append.error, { fallback: "Couldn't add it.", badRequest: levelNameMissing }) : null}
+      </ErrorText>
       <Button
         title={append.isPending ? "Adding…" : "Add Level"}
         onPress={() => append.mutate({ collectionId, name })}
@@ -248,7 +256,7 @@ function RemoveDeepest({ collectionId, level }: { collectionId: string; level: L
       const count = remove.error.data.itemCount;
       error = `${level.name} still has ${count} ${count === 1 ? "Item" : "Items"}. Delete them before removing this Level.`;
     } else {
-      error = errorMessage(remove.error, "Couldn't remove it.");
+      error = errorMessage(remove.error, { fallback: "Couldn't remove it." });
     }
   }
 
@@ -266,14 +274,7 @@ function RemoveDeepest({ collectionId, level }: { collectionId: string; level: L
   );
 }
 
-function errorMessage(error: unknown, fallback: string, badRequest = "Give the Level a name."): string {
-  if (!(error instanceof ORPCError)) return "Couldn't reach the server. Try again.";
-  // Typed errors (NOT_FOUND, ONLY_LEVEL...) carry a message meant for people.
-  if (error.defined) return error.message;
-  // Input validation failures come back as BAD_REQUEST.
-  if (error.code === "BAD_REQUEST") return badRequest;
-  return `${fallback} Try again.`;
-}
+const levelNameMissing = "Give the Level a name.";
 
 const styles = StyleSheet.create({
   screen: { padding: 24, gap: 16 },

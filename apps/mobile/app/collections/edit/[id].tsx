@@ -4,7 +4,8 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { ScrollView, Text, View } from "react-native";
 import { ErrorText, formStyles } from "@/components/form";
-import { ConfirmDelete, errorMessage, manageStyles, RenameField } from "@/components/manage";
+import { ConfirmDelete, manageStyles, RenameField } from "@/components/manage";
+import { errorMessage } from "@/lib/errors";
 import { orpc, queryClient } from "@/lib/api";
 import { describeCollectionDelete } from "@/lib/delete-preview";
 
@@ -57,7 +58,9 @@ export default function EditCollection() {
         key={name}
         name={name}
         saving={rename.isPending}
-        error={rename.error ? errorMessage(rename.error, "Couldn't rename it.") : null}
+        error={
+          rename.error ? errorMessage(rename.error, { fallback: "Couldn't rename it.", badRequest: "Give it a name." }) : null
+        }
         onSave={(newName) => rename.mutate({ id, name: newName })}
       />
       <ConfirmDelete
@@ -72,9 +75,9 @@ export default function EditCollection() {
         deleting={remove.isPending}
         error={
           preview.error
-            ? errorMessage(preview.error, "Couldn't check what would be deleted.")
+            ? errorMessage(preview.error, { fallback: "Couldn't check what would be deleted." })
             : remove.error
-              ? errorMessage(remove.error, "Couldn't delete it.")
+              ? errorMessage(remove.error, { fallback: "Couldn't delete it." })
               : null
         }
         // The user has read the preview, so this is their confirmation.
