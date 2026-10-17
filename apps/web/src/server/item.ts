@@ -3,6 +3,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { memberOf } from "./collection";
 import { prisma } from "./db";
 import { authed } from "./orpc";
+import { lockCollection } from "./level";
 import { ownOverallRating, ownOverallRatingSelect } from "./rating";
 
 const itemSummarySelect = { id: true, name: true, levelId: true, parentId: true } as const;
@@ -22,12 +23,13 @@ function withOverallRating<T extends { overallRatings: Parameters<typeof ownOver
 const itemOrder = [{ sortKey: "asc" }, { id: "asc" }] satisfies Prisma.ItemOrderByWithRelationInput[];
 
 // Walks up from the parent, one query per Level; Collections have only a
-// handful of Levels. Returns top Level first.
-async function breadcrumbOf(parentId: string | null): Promise<BreadcrumbEntry[]> {
+// handful of Levels. Returns top Level first. Run it in the same snapshot the
+// Item was read in, so every ancestor is still there.
+async function breadcrumbOf(db: Prisma.TransactionClient, parentId: string | null): Promise<BreadcrumbEntry[]> {
   const breadcrumb: BreadcrumbEntry[] = [];
   let nextId = parentId;
   while (nextId !== null) {
-    const ancestor = await prisma.item.findUniqueOrThrow({
+    const ancestor = await db.item.findUniqueOrThrow({
       where: { id: nextId },
       select: { id: true, name: true, levelId: true, parentId: true },
     });
@@ -39,41 +41,46 @@ async function breadcrumbOf(parentId: string | null): Promise<BreadcrumbEntry[]>
 
 export const item = {
   create: authed.item.create.handler(async ({ input, context, errors }) => {
-    const collection = await prisma.collection.findFirst({
-      where: { id: input.collectionId, ...memberOf(context.user.id) },
-      select: { id: true },
-    });
-    if (!collection) throw errors.NOT_FOUND();
-    const level = await prisma.level.findFirst({ where: { id: input.levelId, collectionId: collection.id } });
-    if (!level) throw errors.INVALID_STRUCTURE();
+    return prisma.$transaction(async (tx) => {
+      // The Collection lock keeps level.removeDeepest from removing the Level
+      // between this check and the insert.
+      if (!(await lockCollection(tx, input.collectionId, context.user.id))) throw errors.NOT_FOUND();
+      const level = await tx.level.findFirst({ where: { id: input.levelId, collectionId: input.collectionId } });
+      if (!level) throw errors.INVALID_STRUCTURE();
 
-    // The database backs these rules too (see the Item model), but checking
-    // here gives the caller a typed error instead of a constraint violation.
-    let parent: { id: string; levelPosition: number } | null = null;
-    if (level.position === 0) {
-      if (input.parentId !== undefined) throw errors.INVALID_STRUCTURE();
-    } else {
-      if (input.parentId === undefined) throw errors.INVALID_STRUCTURE();
-      parent = await prisma.item.findFirst({
-        where: { id: input.parentId, collectionId: collection.id, levelPosition: level.position - 1 },
-        select: { id: true, levelPosition: true },
+      // The database backs these rules too (see the Item model), but checking
+      // here gives the caller a typed error instead of a constraint violation.
+      let parent: { id: string; levelPosition: number } | null = null;
+      if (level.position === 0) {
+        if (input.parentId !== undefined) throw errors.INVALID_STRUCTURE();
+      } else {
+        if (input.parentId === undefined) throw errors.INVALID_STRUCTURE();
+        // Locked for share so item.delete (which locks it for update) can't
+        // remove the parent between this check and the insert. A parent being
+        // deleted right now is waited for, then reads as missing.
+        const [found] = await tx.$queryRaw<{ id: string; levelPosition: number }[]>`
+          select id, "levelPosition" from item
+          where id = ${input.parentId} and "collectionId" = ${input.collectionId}
+            and "levelPosition" = ${level.position - 1}
+          for share`;
+        if (!found) throw errors.INVALID_STRUCTURE();
+        parent = found;
+      }
+
+      const created = await tx.item.create({
+        data: {
+          collectionId: input.collectionId,
+          levelId: level.id,
+          levelPosition: level.position,
+          parentId: parent?.id ?? null,
+          parentLevelPosition: parent?.levelPosition ?? null,
+          name: input.name,
+        },
+        select: itemSummarySelect,
       });
-      if (!parent) throw errors.INVALID_STRUCTURE();
-    }
-
-    const created = await prisma.item.create({
-      data: {
-        collectionId: collection.id,
-        levelId: level.id,
-        levelPosition: level.position,
-        parentId: parent?.id ?? null,
-        parentLevelPosition: parent?.levelPosition ?? null,
-        name: input.name,
-      },
-      select: itemSummarySelect,
+      // A new Item has no ratings yet.
+      return { ...created, overallRating: null };
     });
-    // A new Item has no ratings yet.
-    return { ...created, overallRating: null };
   }),
 
   list: authed.item.list.handler(async ({ input, context, errors }) => {
@@ -99,13 +106,20 @@ export const item = {
   }),
 
   get: authed.item.get.handler(async ({ input, context, errors }) => {
-    const row = await prisma.item.findFirst({
-      where: { id: input.id, collection: memberOf(context.user.id) },
-      select: { ...itemSummaryFor(context.user.id), collectionId: true, _count: { select: { children: true } } },
-    });
-    if (!row) throw errors.NOT_FOUND();
-    const { _count, ...item } = withOverallRating(row);
-    return { ...item, breadcrumb: await breadcrumbOf(item.parentId), childCount: _count.children };
+    // Repeatable read: one snapshot for the Item and its ancestors, so an
+    // ancestor deleted mid-request can't go missing from the breadcrumb.
+    return prisma.$transaction(
+      async (tx) => {
+        const row = await tx.item.findFirst({
+          where: { id: input.id, collection: memberOf(context.user.id) },
+          select: { ...itemSummaryFor(context.user.id), collectionId: true, _count: { select: { children: true } } },
+        });
+        if (!row) throw errors.NOT_FOUND();
+        const { _count, ...item } = withOverallRating(row);
+        return { ...item, breadcrumb: await breadcrumbOf(tx, item.parentId), childCount: _count.children };
+      },
+      { isolationLevel: "RepeatableRead" },
+    );
   }),
 
   rename: authed.item.rename.handler(async ({ input, context, errors }) => {

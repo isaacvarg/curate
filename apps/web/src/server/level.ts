@@ -7,7 +7,7 @@ import { authed } from "./orpc";
 // Locks the Collection's row for the rest of the transaction, so two changes
 // to its Levels can't both read the same deepest Level. Returns false when
 // the Collection is missing or the User isn't a member.
-async function lockCollection(tx: Prisma.TransactionClient, collectionId: string, userId: string) {
+export async function lockCollection(tx: Prisma.TransactionClient, collectionId: string, userId: string) {
   const collection = await tx.collection.findFirst({
     where: { id: collectionId, ...memberOf(userId) },
     select: { id: true },
@@ -99,8 +99,8 @@ export const level = {
       });
       if (deepest.position === 0) throw errors.ONLY_LEVEL();
       // The Item foreign key also refuses this delete; checking first gives
-      // the caller a typed error with the count. Item creation doesn't take
-      // the Collection lock, so a racing create can still hit the constraint.
+      // the caller a typed error with the count. item.create takes the same
+      // Collection lock, so no Item can land between this count and the delete.
       if (deepest._count.items > 0) throw errors.LEVEL_HAS_ITEMS({ data: { itemCount: deepest._count.items } });
       await tx.level.delete({ where: { id: deepest.id } });
     });

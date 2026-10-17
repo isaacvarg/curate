@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { createTestClient, createTestUser } from "./harness";
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function tvCollection() {
   const client = createTestClient({ user: await createTestUser() });
   const collection = await client.collection.create({ name: "TV", levels: ["Show", "Season", "Episode"] });
@@ -134,6 +136,50 @@ describe("item.create", () => {
       }),
     ).rejects.toMatchObject({ code: "UNAUTHORIZED", defined: true });
   });
+
+  it("racing removal of its Level, either lands (keeping the Level) or fails with a typed INVALID_STRUCTURE", async () => {
+    const client = createTestClient({ user: await createTestUser() });
+
+    for (let round = 0; round < 15; round++) {
+      const collection = await client.collection.create({ name: `TV ${round}`, levels: ["Show", "Season"] });
+      const [showLevel, seasonLevel] = collection.levels;
+      if (!showLevel || !seasonLevel) throw new Error("expected two Levels");
+      const show = await client.item.create({ collectionId: collection.id, levelId: showLevel.id, name: "The Wire" });
+
+      const [created, removed] = await Promise.allSettled([
+        client.item.create({ collectionId: collection.id, levelId: seasonLevel.id, parentId: show.id, name: "S1" }),
+        client.level.removeDeepest({ collectionId: collection.id }),
+      ]);
+
+      if (created.status === "fulfilled") {
+        expect(removed).toMatchObject({ status: "rejected", reason: { code: "LEVEL_HAS_ITEMS", defined: true } });
+      } else {
+        expect(created.reason).toMatchObject({ code: "INVALID_STRUCTURE", defined: true });
+        expect(removed.status).toBe("fulfilled");
+      }
+    }
+  });
+
+  it("racing deletion of its parent, either lands (and goes with the parent) or fails with a typed INVALID_STRUCTURE", async () => {
+    const { client, collection, levels } = await tvCollection();
+
+    for (let round = 0; round < 15; round++) {
+      const show = await client.item.create({ collectionId: collection.id, levelId: levels.show.id, name: `Show ${round}` });
+
+      const [created, deleted] = await Promise.allSettled([
+        client.item.create({ collectionId: collection.id, levelId: levels.season.id, parentId: show.id, name: "S1" }),
+        client.item.delete({ id: show.id, confirmed: true }),
+      ]);
+
+      expect(deleted.status).toBe("fulfilled");
+      if (created.status === "rejected") {
+        expect(created.reason).toMatchObject({ code: "INVALID_STRUCTURE", defined: true });
+      }
+      expect(await client.item.list({ collectionId: collection.id })).not.toContainEqual(
+        expect.objectContaining({ id: show.id }),
+      );
+    }
+  });
 });
 
 describe("item.list", () => {
@@ -263,6 +309,25 @@ describe("item.get", () => {
     await expect(client.item.get({ id: show.id })).resolves.toMatchObject({ childCount: 2 });
     await expect(client.item.get({ id: season.id })).resolves.toMatchObject({ childCount: 1 });
     await expect(client.item.get({ id: episode.id })).resolves.toMatchObject({ childCount: 0 });
+  });
+
+  it("racing deletion of an ancestor, returns the whole Item or a typed NOT_FOUND", async () => {
+    for (let round = 0; round < 30; round++) {
+      const { client, show, episode } = await wireEpisode();
+
+      const [deleted, got] = await Promise.allSettled([
+        client.item.delete({ id: show.id, confirmed: true }),
+        // Staggered so the rounds sweep across the delete's window.
+        sleep(round % 10).then(() => client.item.get({ id: episode.id })),
+      ]);
+
+      expect(deleted.status).toBe("fulfilled");
+      if (got.status === "fulfilled") {
+        expect(got.value.breadcrumb.map((entry) => entry.name)).toEqual(["The Wire", "Season 2"]);
+      } else {
+        expect(got.reason).toMatchObject({ code: "NOT_FOUND", defined: true });
+      }
+    }
   });
 
   it("fails with a typed NOT_FOUND for an Item in another User's Collection", async () => {
