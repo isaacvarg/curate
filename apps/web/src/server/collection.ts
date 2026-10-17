@@ -1,4 +1,7 @@
-import { type Collection, defaultLevelName, defaultVerdict, type Level, verdictScaleSchema } from "@repo/shared";
+import {
+  type Collection,
+  type CollectionDeletePreview,
+  defaultLevelName, defaultVerdict, type Level, verdictScaleSchema } from "@repo/shared";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "./db";
 import { authed } from "./orpc";
@@ -80,4 +83,49 @@ export const collection = {
     if (!row) throw errors.NOT_FOUND();
     return toCollection(row);
   }),
+
+  rename: authed.collection.rename.handler(async ({ input, context, errors }) => {
+    const found = await prisma.collection.findFirst({
+      where: { id: input.id, ...memberOf(context.user.id) },
+      select: { id: true },
+    });
+    if (!found) throw errors.NOT_FOUND();
+    return prisma.collection.update({
+      where: { id: found.id },
+      data: { name: input.name },
+      select: { id: true, name: true },
+    });
+  }),
+
+  deletePreview: authed.collection.deletePreview.handler(async ({ input, context, errors }) => {
+    const found = await prisma.collection.findFirst({
+      where: { id: input.id, ...memberOf(context.user.id) },
+      select: { id: true },
+    });
+    if (!found) throw errors.NOT_FOUND();
+    return deletePreviewOf(prisma, found.id);
+  }),
+
+  delete: authed.collection.delete.handler(async ({ input, context, errors }) => {
+    await prisma.$transaction(async (tx) => {
+      const found = await tx.collection.findFirst({
+        where: { id: input.id, ...memberOf(context.user.id) },
+        select: { id: true },
+      });
+      if (!found) throw errors.NOT_FOUND();
+      if (!input.confirmed) {
+        throw errors.CONFIRMATION_REQUIRED({ data: await deletePreviewOf(tx, found.id) });
+      }
+      // Levels, Items, Overall Ratings and memberships cascade.
+      await tx.collection.delete({ where: { id: found.id } });
+    });
+  }),
 };
+
+async function deletePreviewOf(db: Prisma.TransactionClient, collectionId: string): Promise<CollectionDeletePreview> {
+  const [itemCount, overallRatingCount] = await Promise.all([
+    db.item.count({ where: { collectionId } }),
+    db.overallRating.count({ where: { item: { collectionId } } }),
+  ]);
+  return { itemCount, overallRatingCount };
+}

@@ -64,6 +64,9 @@ export default function ItemScreen() {
           </Fragment>
         ))}
       </View>
+      <Link href={{ pathname: "/items/edit/[id]", params: { id } }} style={styles.edit}>
+        Rename or delete
+      </Link>
       {level ? (
         <>
           <Text style={styles.level}>{level.name}</Text>
@@ -91,4 +94,5 @@ const styles = StyleSheet.create({
   crumbLink: { color: "#2f6fed", fontSize: 16 },
   separator: { color: "#666", fontSize: 16 },
   level: { color: "#666", fontSize: 15 },
+  edit: { color: "#2f6fed", fontSize: 16, fontWeight: "600" },
 });

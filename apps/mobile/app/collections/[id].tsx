@@ -38,6 +38,9 @@ export default function CollectionScreen() {
       <Link href={{ pathname: "/collections/levels/[id]", params: { id } }} style={styles.settings}>
         Level settings
       </Link>
+      <Link href={{ pathname: "/collections/edit/[id]", params: { id } }} style={styles.settings}>
+        Rename or delete
+      </Link>
       {topLevel ? (
         <>
           <AddItem collectionId={id} level={topLevel} />

@@ -38,6 +38,23 @@ export const collectionSchema = z.object({
 
 export const collectionGetInputSchema = z.object({ id: z.string() });
 
+export const collectionRenameInputSchema = z.object({ id: z.string(), name: nameSchema });
+
+// What deleting a Collection would remove. Overall Ratings are every
+// Collection Member's, not just the caller's.
+export const collectionDeletePreviewSchema = z.object({
+  itemCount: z.number().int(),
+  overallRatingCount: z.number().int(),
+});
+
+export const collectionDeleteInputSchema = z.object({
+  id: z.string(),
+  // Set once the caller has seen the delete preview and confirmed it.
+  confirmed: z.boolean().optional(),
+});
+
+export type CollectionDeletePreview = z.infer<typeof collectionDeletePreviewSchema>;
+
 export const collectionSummarySchema = z.object({
   id: z.string(),
   name: z.string(),

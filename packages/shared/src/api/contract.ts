@@ -2,12 +2,24 @@ import { oc } from "@orpc/contract";
 import { z } from "zod";
 import {
   collectionCreateInputSchema,
+  collectionDeleteInputSchema,
+  collectionDeletePreviewSchema,
   collectionGetInputSchema,
+  collectionRenameInputSchema,
   collectionSchema,
   collectionSummarySchema,
   levelSchema,
 } from "./collection";
-import { itemCreateInputSchema, itemGetInputSchema, itemListInputSchema, itemSchema, itemSummarySchema } from "./item";
+import {
+  itemCreateInputSchema,
+  itemDeleteInputSchema,
+  itemDeletePreviewSchema,
+  itemGetInputSchema,
+  itemListInputSchema,
+  itemRenameInputSchema,
+  itemSchema,
+  itemSummarySchema,
+} from "./item";
 import {
   levelAppendDeepestInputSchema,
   levelRemoveDeepestInputSchema,
@@ -42,6 +54,15 @@ const valueOutOfScale = {
   VALUE_OUT_OF_SCALE: { message: "That value isn't on this Verdict's scale." },
 } as const;
 
+// A delete that would remove more than the one thing named needs the
+// caller's explicit confirmation; without it nothing is removed. The data
+// carries what would go, so the caller can show it before confirming.
+function confirmationRequired<T extends z.ZodType>(data: T) {
+  return {
+    CONFIRMATION_REQUIRED: { message: "Confirm the delete to remove everything listed.", data },
+  } as const;
+}
+
 export const userSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -59,6 +80,17 @@ export const contract = {
     // The caller's Collections, found through their Collection Member rows.
     list: authed.output(z.array(collectionSummarySchema)),
     get: authed.errors(collectionNotFound).input(collectionGetInputSchema).output(collectionSchema),
+    rename: authed.errors(collectionNotFound).input(collectionRenameInputSchema).output(collectionSummarySchema),
+    deletePreview: authed
+      .errors(collectionNotFound)
+      .input(collectionGetInputSchema)
+      .output(collectionDeletePreviewSchema),
+    // Removes the Collection with its Levels, Items, every Collection
+    // Member's Overall Ratings and the memberships. Always needs `confirmed`.
+    delete: authed
+      .errors({ ...collectionNotFound, ...confirmationRequired(collectionDeletePreviewSchema) })
+      .input(collectionDeleteInputSchema)
+      .output(z.void()),
   },
   level: {
     // A Level in a Collection the caller isn't a member of reads as missing.
@@ -113,6 +145,15 @@ export const contract = {
       .errors({ NOT_FOUND: { message: "Item not found." } })
       .input(itemGetInputSchema)
       .output(itemSchema),
+    rename: authed.errors(itemNotFound).input(itemRenameInputSchema).output(itemSummarySchema),
+    deletePreview: authed.errors(itemNotFound).input(itemGetInputSchema).output(itemDeletePreviewSchema),
+    // An Item with no children is deleted straight away. One with children
+    // needs `confirmed`, so a whole Show can't be wiped by accident; then its
+    // descendants and every Collection Member's Overall Ratings go with it.
+    delete: authed
+      .errors({ ...itemNotFound, ...confirmationRequired(itemDeletePreviewSchema) })
+      .input(itemDeleteInputSchema)
+      .output(z.void()),
   },
   rating: {
     // Creates or replaces the caller's Overall Rating of the Item; there's

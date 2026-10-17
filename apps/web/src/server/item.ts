@@ -1,4 +1,4 @@
-import type { BreadcrumbEntry } from "@repo/shared";
+import type { BreadcrumbEntry, ItemDeletePreview } from "@repo/shared";
 import type { Prisma } from "@/generated/prisma/client";
 import { memberOf } from "./collection";
 import { prisma } from "./db";
@@ -107,4 +107,61 @@ export const item = {
     const { _count, ...item } = withOverallRating(row);
     return { ...item, breadcrumb: await breadcrumbOf(item.parentId), childCount: _count.children };
   }),
+
+  rename: authed.item.rename.handler(async ({ input, context, errors }) => {
+    const found = await prisma.item.findFirst({
+      where: { id: input.id, collection: memberOf(context.user.id) },
+      select: { id: true },
+    });
+    if (!found) throw errors.NOT_FOUND();
+    const row = await prisma.item.update({
+      where: { id: found.id },
+      data: { name: input.name },
+      select: itemSummaryFor(context.user.id),
+    });
+    return withOverallRating(row);
+  }),
+
+  deletePreview: authed.item.deletePreview.handler(async ({ input, context, errors }) => {
+    const found = await prisma.item.findFirst({
+      where: { id: input.id, collection: memberOf(context.user.id) },
+      select: { id: true },
+    });
+    if (!found) throw errors.NOT_FOUND();
+    return deletePreviewOf(prisma, found.id);
+  }),
+
+  delete: authed.item.delete.handler(async ({ input, context, errors }) => {
+    await prisma.$transaction(async (tx) => {
+      const found = await tx.item.findFirst({
+        where: { id: input.id, collection: memberOf(context.user.id) },
+        select: { id: true },
+      });
+      if (!found) throw errors.NOT_FOUND();
+      // Inserting a child takes a key-share lock on its parent, so this keeps
+      // a new child from appearing between the check and the delete.
+      await tx.$queryRaw`select id from item where id = ${found.id} for update`;
+      if (!input.confirmed) {
+        const preview = await deletePreviewOf(tx, found.id);
+        if (preview.descendantCount > 0) throw errors.CONFIRMATION_REQUIRED({ data: preview });
+      }
+      // Descendants and Overall Ratings cascade.
+      await tx.item.delete({ where: { id: found.id } });
+    });
+  }),
 };
+
+// Finds the Item's descendants walking down one Level per query (Collections
+// have only a handful of Levels).
+async function deletePreviewOf(db: Prisma.TransactionClient, itemId: string): Promise<ItemDeletePreview> {
+  const descendantIds: string[] = [];
+  let parentIds = [itemId];
+  while (parentIds.length > 0) {
+    const children = await db.item.findMany({ where: { parentId: { in: parentIds } }, select: { id: true } });
+    parentIds = children.map((child) => child.id);
+    descendantIds.push(...parentIds);
+  }
+  // Every Collection Member's, since all of them go with the Items.
+  const overallRatingCount = await db.overallRating.count({ where: { itemId: { in: [itemId, ...descendantIds] } } });
+  return { descendantCount: descendantIds.length, overallRatingCount };
+}
