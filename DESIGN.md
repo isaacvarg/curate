@@ -92,103 +92,103 @@ typography:
     fontFamily: Fraunces
     fontSize: 30px
     fontWeight: 450
-    lineHeight: 1.1
+    lineHeight: "1.1"
     letterSpacing: -0.01em
     fontVariation: '"SOFT" 50, "WONK" 0'
   heading:
     fontFamily: Fraunces
     fontSize: 21px
     fontWeight: 450
-    lineHeight: 1.15
+    lineHeight: "1.15"
     letterSpacing: -0.01em
     fontVariation: '"SOFT" 50, "WONK" 0'
   section-italic:
     fontFamily: Fraunces
     fontSize: 20px
     fontWeight: 400
-    lineHeight: 1.2
+    lineHeight: "1.2"
     fontVariation: '"SOFT" 50, "WONK" 0'
   category:
     fontFamily: Fraunces
     fontSize: 16px
     fontWeight: 400
-    lineHeight: 1.2
+    lineHeight: "1.2"
     fontVariation: '"SOFT" 50, "WONK" 0'
   verdict:
     fontFamily: Fraunces
     fontSize: 40px
     fontWeight: 400
-    lineHeight: 1
+    lineHeight: "1"
     fontFeature: '"lnum", "tnum"'
     fontVariation: '"SOFT" 50, "WONK" 0'
   verdict-sm:
     fontFamily: Fraunces
     fontSize: 26px
     fontWeight: 400
-    lineHeight: 1
+    lineHeight: "1"
     fontFeature: '"lnum", "tnum"'
     fontVariation: '"SOFT" 50, "WONK" 0'
   note-italic:
     fontFamily: Fraunces
     fontSize: 16px
     fontWeight: 400
-    lineHeight: 1.35
+    lineHeight: "1.35"
     fontVariation: '"SOFT" 50, "WONK" 0'
   byline-italic:
     fontFamily: Fraunces
     fontSize: 15px
     fontWeight: 400
-    lineHeight: 1.35
+    lineHeight: "1.35"
     fontVariation: '"SOFT" 50, "WONK" 0'
   caption-italic:
     fontFamily: Fraunces
     fontSize: 12px
     fontWeight: 400
-    lineHeight: 1.3
+    lineHeight: "1.3"
     fontVariation: '"SOFT" 50, "WONK" 0'
   wordmark:
     fontFamily: Fraunces
     fontSize: 23px
     fontWeight: 500
-    lineHeight: 1
+    lineHeight: "1"
     letterSpacing: -0.01em
     fontVariation: '"SOFT" 50, "WONK" 0'
   body:
     fontFamily: Figtree
     fontSize: 16px
     fontWeight: 400
-    lineHeight: 1.5
+    lineHeight: "1.5"
   ui:
     fontFamily: Figtree
     fontSize: 15px
     fontWeight: 400
-    lineHeight: 1.4
+    lineHeight: "1.4"
   ui-strong:
     fontFamily: Figtree
     fontSize: 15px
     fontWeight: 600
-    lineHeight: 1.2
+    lineHeight: "1.2"
   meta:
     fontFamily: Figtree
     fontSize: 13px
     fontWeight: 400
-    lineHeight: 1.35
+    lineHeight: "1.35"
   micro:
     fontFamily: Figtree
     fontSize: 12px
     fontWeight: 400
-    lineHeight: 1.3
+    lineHeight: "1.3"
   label-caps:
     fontFamily: Figtree
     fontSize: 11px
     fontWeight: 600
-    lineHeight: 1.3
+    lineHeight: "1.3"
     letterSpacing: 0.08em
   number:
     fontFamily: Figtree
     fontSize: 17px
     fontWeight: 400
-    lineHeight: 1.1
+    lineHeight: "1.1"
     fontFeature: '"lnum", "tnum"'
 rounded:
   field: 8px
@@ -772,7 +772,7 @@ components:
 
 This is curate's canonical brand: its colours, type, spacing, shapes and components, and the reasons behind them. The tokens in the front matter are normative. The shared package's tokens are generated from them and are never edited by hand. How each platform applies the brand lives elsewhere: MOBILE-DESIGN.md for the app (#37), and a web equivalent with the first web UI ticket. Terms in **bold** are defined in [GLOSSARY.md](GLOSSARY.md).
 
-To change the design, edit this file, run `npx @google/design.md lint DESIGN.md`, and regenerate the tokens.
+To change the design, edit this file and run `pnpm tokens`, which regenerates `packages/shared/src/design/tokens.ts`. The tests fail if that file is stale or this one doesn't lint cleanly. Unitless `lineHeight` values are quoted (`"1.5"`) because `@google/design.md` 0.4.0 silently drops bare numbers there.
 
 ## Overview
 

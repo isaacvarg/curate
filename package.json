@@ -9,7 +9,8 @@
     "dev:mobile": "pnpm --filter @repo/mobile start",
     "db:migrate": "pnpm --filter @repo/web db:migrate",
     "typecheck": "pnpm -r typecheck",
-    "test": "vitest run"
+    "test": "vitest run",
+    "tokens": "pnpm --filter @repo/shared tokens"
   },
   "devDependencies": {
     "@types/node": "^26.0.0",

@@ -4,14 +4,19 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./product": "./src/product.ts"
+    "./product": "./src/product.ts",
+    "./design": "./src/design/tokens.ts"
   },
   "scripts": {
+    "tokens": "node src/design/generate.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
     "@orpc/contract": "1.15.7",
     "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@google/design.md": "0.4.0"
   }
 }
