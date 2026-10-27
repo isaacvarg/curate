@@ -2,10 +2,12 @@ import { defaultLevelName } from "@repo/shared";
 import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Button, ErrorText, Field } from "@/components/form";
+import { View } from "react-native";
+import { X } from "lucide-react-native";
+import { Button, ErrorText, Hint, IconButton, Screen, Section, TextField } from "@/components/ui";
 import { orpc, queryClient } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
+import { spacing } from "@/theme";
 
 export default function NewCollection() {
   const router = useRouter();
@@ -31,60 +33,50 @@ export default function NewCollection() {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
-      <Field placeholder="Name, e.g. Board Games" value={name} onChangeText={setName} />
+    <Screen>
+      <TextField label="Name" placeholder="e.g. Board Games" value={name} onChangeText={setName} />
 
-      <Text style={styles.heading}>Levels</Text>
-      <Text style={styles.hint}>
-        {levels.length === 0
-          ? `One Level ("${defaultLevelName}"). Add Levels for nested Collections, top first, e.g. Show › Season › Episode.`
-          : "Top Level first."}
-      </Text>
-      {levels.map((level, index) => (
-        // Positions are the identity here; Levels have no ids until created.
-        <View key={index} style={styles.levelRow}>
-          <Field
-            style={styles.levelField}
-            placeholder={`Level ${index + 1}`}
-            value={level}
-            onChangeText={(value) => setLevel(index, value)}
-          />
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Remove Level ${index + 1}`}
-            onPress={() => setLevels((current) => current.filter((_, i) => i !== index))}
-          >
-            <Text style={styles.remove}>Remove</Text>
-          </Pressable>
-        </View>
-      ))}
-      <Pressable accessibilityRole="button" onPress={() => setLevels((current) => [...current, ""])}>
-        <Text style={styles.add}>+ Add Level</Text>
-      </Pressable>
+      <Section title="Levels">
+        <Hint>
+          {levels.length === 0
+            ? `One Level ("${defaultLevelName}"). Add Levels for nested Collections, top first, e.g. Show › Season › Episode.`
+            : "Top Level first."}
+        </Hint>
+        {levels.map((level, index) => (
+          // Positions are the identity here; Levels have no ids until created.
+          <View key={index} style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+            <View style={{ flex: 1 }}>
+              <TextField
+                placeholder={`Level ${index + 1}`}
+                value={level}
+                onChangeText={(value) => setLevel(index, value)}
+              />
+            </View>
+            <IconButton
+              icon={X}
+              label={`Remove Level ${index + 1}`}
+              onPress={() => setLevels((current) => current.filter((_, i) => i !== index))}
+            />
+          </View>
+        ))}
+        <Button variant="secondary" title="Add Level" onPress={() => setLevels((current) => [...current, ""])} />
+      </Section>
 
-      <ErrorText>
-        {create.error
-          ? errorMessage(create.error, {
-              fallback: "Couldn't create the Collection.",
-              badRequest: "Give the Collection and every Level a name.",
-            })
-          : null}
-      </ErrorText>
-      <Button
-        title={create.isPending ? "Creating…" : "Create Collection"}
-        onPress={submit}
-        disabled={create.isPending}
-      />
-    </ScrollView>
+      <Section>
+        <ErrorText>
+          {create.error
+            ? errorMessage(create.error, {
+                fallback: "Couldn't create the Collection.",
+                badRequest: "Give the Collection and every Level a name.",
+              })
+            : null}
+        </ErrorText>
+        <Button
+          title={create.isPending ? "Creating…" : "Create Collection"}
+          onPress={submit}
+          disabled={create.isPending}
+        />
+      </Section>
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { padding: 24, gap: 12 },
-  heading: { fontSize: 18, fontWeight: "600", marginTop: 8 },
-  hint: { color: "#666", fontSize: 15 },
-  levelRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  levelField: { flex: 1 },
-  remove: { color: "#c62828", fontSize: 15 },
-  add: { color: "#2f6fed", fontSize: 16, fontWeight: "600" },
-});

@@ -1,11 +1,13 @@
 import type { NumericScale, OverallRating, Verdict, VerdictValue } from "@repo/shared";
 import { isDefinedError } from "@orpc/client";
 import { useMutation } from "@tanstack/react-query";
+import { Minus, Plus, Star } from "lucide-react-native";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { ErrorText, Field } from "@/components/form";
+import { View } from "react-native";
+import { Button, ErrorText, IconButton, NumberInput, PressableScale, SingleChoice, Text } from "@/components/ui";
 import { orpc, queryClient } from "@/lib/api";
 import { formatVerdict, parseVerdictInput, stepVerdict, verdictOptions } from "@/lib/verdict";
+import { icon, selectedColors, spacing, useTheme } from "@/theme";
 
 // Sets, changes or clears the caller's Overall Rating of an Item on its
 // Level's Overall Verdict scale: a star row for whole-star scales, otherwise
@@ -35,8 +37,8 @@ export function VerdictControl({
       : null;
 
   return (
-    <View style={styles.control}>
-      <Text style={styles.name}>{verdict.name}</Text>
+    <View style={{ gap: spacing.md }}>
+      <Text variant="ui-strong">{verdict.name}</Text>
       {options.kind === "stepper" ? (
         verdict.scale.kind === "numeric" ? (
           // Keyed by the saved value, so the draft resets once a save lands.
@@ -48,44 +50,96 @@ export function VerdictControl({
             onSave={choose}
           />
         ) : null
-      ) : (
-        <View style={styles.options} accessibilityRole="radiogroup">
-          {options.values.map((value) => {
-            const selected = value === current;
-            // On a star row every star up to the current one is filled.
-            const filled = options.kind === "stars" && current !== null && Number(value) <= Number(current);
-            return (
-              <Pressable
-                key={String(value)}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: selected, disabled: busy }}
-                accessibilityLabel={options.kind === "stars" ? `${value} of ${options.values.length}` : String(value)}
-                disabled={busy}
-                onPress={() => choose(value)}
-                style={options.kind === "stars" ? styles.star : [styles.choice, selected && styles.choiceSelected]}
-              >
-                {options.kind === "stars" ? (
-                  <Text style={styles.starText}>{filled ? "★" : "☆"}</Text>
-                ) : (
-                  <Text style={selected ? styles.choiceTextSelected : styles.choiceText}>{String(value)}</Text>
-                )}
-              </Pressable>
-            );
-          })}
+      ) : options.kind === "stars" ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap" }} accessibilityRole="radiogroup">
+          {options.values.map((value) => (
+            <VerdictStar
+              key={String(value)}
+              label={`${value} of ${options.values.length}`}
+              // Every star up to the current one is filled.
+              filled={current !== null && Number(value) <= Number(current)}
+              selected={value === current}
+              unrated={current === null}
+              busy={busy}
+              onPress={() => choose(value)}
+            />
+          ))}
         </View>
+      ) : (
+        <SingleChoice
+          label={verdict.name}
+          options={options.values.map((value) => ({ value, label: String(value) }))}
+          value={current}
+          onChange={choose}
+          disabled={busy}
+        />
       )}
-      <View style={styles.footer}>
-        <Text style={styles.current}>{current === null ? "Unrated" : formatVerdict(verdict.scale, current)}</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+        {current === null ? (
+          <Text variant="ui" tone="ink-muted" style={{ flex: 1 }}>
+            Not rated
+          </Text>
+        ) : (
+          <Text variant="verdict-sm" selectable style={{ flex: 1 }}>
+            {formatVerdict(verdict.scale, current)}
+          </Text>
+        )}
         {current !== null ? (
-          <Pressable accessibilityRole="button" disabled={busy} onPress={() => clear.mutate({ itemId })}>
-            <Text style={styles.clear}>Clear</Text>
-          </Pressable>
+          <Button variant="text" title="Clear" disabled={busy} onPress={() => clear.mutate({ itemId })} />
         ) : null}
       </View>
       <ErrorText>{errorText}</ErrorText>
     </View>
   );
 }
+
+// One 48pt star of a star row: filled with ink (the Collection's accent once
+// Collections have one), an outline when empty, and dashed while unrated so
+// "not rated" never reads as zero stars (DESIGN.md Verdict control).
+function VerdictStar({
+  label,
+  filled,
+  selected,
+  unrated,
+  busy,
+  onPress,
+}: {
+  label: string;
+  filled: boolean;
+  selected: boolean;
+  unrated: boolean;
+  busy: boolean;
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+  const { fill } = selectedColors(colors);
+  return (
+    <PressableScale
+      accessibilityRole="radio"
+      accessibilityState={{ checked: selected, disabled: busy }}
+      accessibilityLabel={label}
+      disabled={busy}
+      onPress={onPress}
+      style={{
+        width: spacing["touch-target"],
+        height: spacing["touch-target"],
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <Star
+        size={starSize}
+        strokeWidth={icon.stroke}
+        color={filled ? fill : colors["ink-faint"]}
+        fill={filled ? fill : "none"}
+        strokeDasharray={unrated ? starDash : undefined}
+      />
+    </PressableScale>
+  );
+}
+
+const starSize = 32; // the glyph inside its 48pt target
+const starDash = "2 2";
 
 // For numeric scales with too many values to list (0–100, tenths): −/+ move
 // one step, or type a value; nothing is saved until Save.
@@ -107,38 +161,20 @@ function VerdictStepper({
   const unchanged = draft !== null && draft === current;
 
   return (
-    <View style={styles.stepperBox}>
-      <View style={styles.stepper}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Down ${scale.step}`}
-          disabled={busy}
-          onPress={() => step(-1)}
-          style={styles.stepButton}
-        >
-          <Text style={styles.stepText}>−</Text>
-        </Pressable>
-        <Field
-          style={styles.stepField}
-          accessibilityLabel={`Verdict from ${scale.min} to ${scale.max}`}
-          placeholder={`${scale.min}–${scale.max}`}
-          keyboardType="decimal-pad"
-          value={text}
-          onChangeText={setText}
-        />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Up ${scale.step}`}
-          disabled={busy}
-          onPress={() => step(1)}
-          style={styles.stepButton}
-        >
-          <Text style={styles.stepText}>+</Text>
-        </Pressable>
+    <View style={{ gap: spacing.xs }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.sm }}>
+        <IconButton icon={Minus} label={`Down ${scale.step}`} disabled={busy} onPress={() => step(-1)} />
+        <View style={{ width: stepFieldWidth }}>
+          <NumberInput
+            accessibilityLabel={`Verdict from ${scale.min} to ${scale.max}`}
+            placeholder={`${scale.min}–${scale.max}`}
+            value={text}
+            onChangeText={setText}
+          />
+        </View>
+        <IconButton icon={Plus} label={`Up ${scale.step}`} disabled={busy} onPress={() => step(1)} />
         {draft !== null && !unchanged ? (
-          <Pressable accessibilityRole="button" disabled={busy} onPress={() => onSave(draft)}>
-            <Text style={styles.clear}>{busy ? "Saving…" : "Save"}</Text>
-          </Pressable>
+          <Button variant="text" title={busy ? "Saving…" : "Save"} disabled={busy} onPress={() => onSave(draft)} />
         ) : null}
       </View>
       <ErrorText>{text.trim() !== "" && "error" in parsed ? parsed.error : null}</ErrorText>
@@ -146,30 +182,4 @@ function VerdictStepper({
   );
 }
 
-const styles = StyleSheet.create({
-  control: { gap: 6 },
-  stepperBox: { gap: 4 },
-  stepper: { flexDirection: "row", alignItems: "center", gap: 8 },
-  stepButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  stepText: { fontSize: 22 },
-  stepField: { width: 90, textAlign: "center" },
-  name: { fontSize: 16, fontWeight: "600" },
-  options: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  star: { padding: 2 },
-  starText: { fontSize: 32, color: "#e0a100" },
-  choice: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 16, borderWidth: 1, borderColor: "#ccc" },
-  choiceSelected: { backgroundColor: "#2f6fed", borderColor: "#2f6fed" },
-  choiceText: { fontSize: 16 },
-  choiceTextSelected: { fontSize: 16, color: "#fff" },
-  footer: { flexDirection: "row", alignItems: "center", gap: 12 },
-  current: { color: "#666", fontSize: 15 },
-  clear: { color: "#2f6fed", fontSize: 15 },
-});
+const stepFieldWidth = 96; // fits "0–100" in the number style
