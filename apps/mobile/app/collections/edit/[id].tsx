@@ -2,9 +2,8 @@ import { isDefinedError } from "@orpc/client";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { ScrollView, Text, View } from "react-native";
-import { ErrorText, formStyles } from "@/components/form";
-import { ConfirmDelete, manageStyles, RenameField } from "@/components/manage";
+import { ConfirmDelete, RenameField } from "@/components/manage";
+import { ErrorText, Loading, Screen } from "@/components/ui";
 import { errorMessage } from "@/lib/errors";
 import { orpc, queryClient } from "@/lib/api";
 import { describeCollectionDelete } from "@/lib/delete-preview";
@@ -36,24 +35,24 @@ export default function EditCollection() {
   if (collection.error) {
     const notFound = isDefinedError(collection.error) && collection.error.code === "NOT_FOUND";
     return (
-      <View style={formStyles.screen}>
+      <Screen>
         <ErrorText>{notFound ? "This Collection doesn't exist." : "Couldn't load this Collection."}</ErrorText>
-      </View>
+      </Screen>
     );
   }
 
   if (!collection.data) {
     return (
-      <View style={formStyles.screen}>
-        <Text>Loading…</Text>
-      </View>
+      <Screen>
+        <Loading />
+      </Screen>
     );
   }
 
   const { name } = collection.data;
 
   return (
-    <ScrollView contentContainerStyle={manageStyles.screen} keyboardShouldPersistTaps="handled">
+    <Screen>
       <RenameField
         key={name}
         name={name}
@@ -83,6 +82,6 @@ export default function EditCollection() {
         // The user has read the preview, so this is their confirmation.
         onConfirm={() => remove.mutate({ id, confirmed: true })}
       />
-    </ScrollView>
+    </Screen>
   );
 }

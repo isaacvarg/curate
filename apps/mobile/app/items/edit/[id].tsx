@@ -2,9 +2,8 @@ import { isDefinedError } from "@orpc/client";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
-import { ScrollView, Text, View } from "react-native";
-import { ErrorText, formStyles } from "@/components/form";
-import { ConfirmDelete, manageStyles, RenameField } from "@/components/manage";
+import { ConfirmDelete, RenameField } from "@/components/manage";
+import { ErrorText, Loading, Screen } from "@/components/ui";
 import { errorMessage } from "@/lib/errors";
 import { orpc, queryClient } from "@/lib/api";
 import { describeItemDelete } from "@/lib/delete-preview";
@@ -40,24 +39,24 @@ export default function EditItem() {
   if (item.error) {
     const notFound = isDefinedError(item.error) && item.error.code === "NOT_FOUND";
     return (
-      <View style={formStyles.screen}>
+      <Screen>
         <ErrorText>{notFound ? "This Item doesn't exist." : "Couldn't load this Item."}</ErrorText>
-      </View>
+      </Screen>
     );
   }
 
   if (!item.data) {
     return (
-      <View style={formStyles.screen}>
-        <Text>Loading…</Text>
-      </View>
+      <Screen>
+        <Loading />
+      </Screen>
     );
   }
 
   const { name } = item.data;
 
   return (
-    <ScrollView contentContainerStyle={manageStyles.screen} keyboardShouldPersistTaps="handled">
+    <Screen>
       <RenameField
         key={name}
         name={name}
@@ -87,6 +86,6 @@ export default function EditItem() {
         // The user has read the preview, so this confirms any cascade.
         onConfirm={() => remove.mutate({ id, confirmed: true })}
       />
-    </ScrollView>
+    </Screen>
   );
 }

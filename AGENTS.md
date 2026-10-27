@@ -1,3 +1,7 @@
+## Design
+
+Design follows DESIGN.md (brand and tokens, canonical) and MOBILE-DESIGN.md (how the app applies it). Use the primitives and the generated tokens, with no one-off colours, font sizes or spacing. Change the design by editing DESIGN.md and regenerating.
+
 ## Agent skills
 
 ### Issue tracker

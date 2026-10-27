@@ -3,8 +3,22 @@ import { defaultVerdict, type Level, sameVerdictScale } from "@repo/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { Button, ErrorText, Field } from "@/components/form";
+import { View } from "react-native";
+import {
+  Button,
+  Card,
+  ErrorText,
+  Hint,
+  Label,
+  Loading,
+  NumberInput,
+  Screen,
+  SegmentedControl,
+  Section,
+  SingleChoice,
+  Text,
+  TextField,
+} from "@/components/ui";
 import { orpc, queryClient } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
 import {
@@ -15,6 +29,7 @@ import {
   scalePresets,
   toScaleDraft,
 } from "@/lib/verdict-settings";
+import { spacing } from "@/theme";
 
 // Level settings for a Collection: rename any Level, add a Level below the
 // deepest one, or remove the deepest Level while it has no Items. Only the
@@ -27,17 +42,17 @@ export default function LevelSettings() {
   if (collection.error) {
     const notFound = isDefinedError(collection.error) && collection.error.code === "NOT_FOUND";
     return (
-      <View style={styles.screen}>
+      <Screen>
         <ErrorText>{notFound ? "This Collection doesn't exist." : "Couldn't load this Collection."}</ErrorText>
-      </View>
+      </Screen>
     );
   }
 
   if (!collection.data) {
     return (
-      <View style={styles.screen}>
-        <Text>Loading…</Text>
-      </View>
+      <Screen>
+        <Loading />
+      </Screen>
     );
   }
 
@@ -45,15 +60,15 @@ export default function LevelSettings() {
   const deepest = levels.at(-1);
 
   return (
-    <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
-      <Text style={styles.hint}>Top Level first. Only the deepest Level can be removed, and only while it has no Items.</Text>
+    <Screen>
+      <Hint>Top Level first. Only the deepest Level can be removed, and only while it has no Items.</Hint>
       {levels.map((level) => (
         // Keyed by name and Verdict too, so the fields reset after a save lands.
         <LevelRow key={levelRowKey(level)} level={level} />
       ))}
       {deepest && levels.length > 1 ? <RemoveDeepest collectionId={id} level={deepest} /> : null}
       <AppendDeepest collectionId={id} />
-    </ScrollView>
+    </Screen>
   );
 }
 
@@ -73,26 +88,27 @@ function LevelRow({ level }: { level: Level }) {
   const changed = name.trim() !== level.name;
 
   return (
-    <View style={styles.level}>
-      <Text style={styles.position}>Level {level.position + 1}</Text>
-      <View style={styles.row}>
-        <Field style={styles.field} placeholder="Level name" value={name} onChangeText={setName} />
+    <Card>
+      <Label>{`Level ${level.position + 1}`}</Label>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: spacing.md }}>
+        <View style={{ flex: 1 }}>
+          <TextField placeholder="Level name" value={name} onChangeText={setName} />
+        </View>
         {changed ? (
-          <Pressable
-            accessibilityRole="button"
+          <Button
+            variant="text"
+            title={rename.isPending ? "Saving…" : "Save"}
             accessibilityLabel={`Save name for Level ${level.position + 1}`}
             disabled={rename.isPending}
             onPress={() => rename.mutate({ id: level.id, name })}
-          >
-            <Text style={styles.action}>{rename.isPending ? "Saving…" : "Save"}</Text>
-          </Pressable>
+          />
         ) : null}
       </View>
       <ErrorText>
         {rename.error ? errorMessage(rename.error, { fallback: "Couldn't rename it.", badRequest: levelNameMissing }) : null}
       </ErrorText>
       <VerdictSettings level={level} />
-    </View>
+    </Card>
   );
 }
 
@@ -142,39 +158,42 @@ function VerdictSettings({ level }: { level: Level }) {
     setDraft(kind === "numeric" ? toScaleDraft(defaultVerdict.scale) : { kind: "labels", labels: "" });
   };
 
+  const selectedPreset =
+    scalePresets.find((preset) => "scale" in parsed && sameVerdictScale(parsed.scale, preset.scale))?.title ?? null;
+
   return (
-    <View style={styles.verdict}>
-      <Text style={styles.subheading}>
+    <View style={{ gap: spacing.md, paddingTop: spacing.sm }}>
+      <Text variant="ui-strong">
         Verdict: {saved.name}, {describeScale(saved.scale)}
       </Text>
-      <Field placeholder="Verdict name, e.g. Score" value={name} onChangeText={setName} />
+      <TextField placeholder="Verdict name, e.g. Score" value={name} onChangeText={setName} />
 
-      <View style={styles.chips} accessibilityRole="radiogroup">
-        {scalePresets.map((preset) => {
-          const selected = "scale" in parsed && sameVerdictScale(parsed.scale, preset.scale);
-          return (
-            <Chip
-              key={preset.title}
-              title={preset.title}
-              selected={selected}
-              onPress={() => setDraft(toScaleDraft(preset.scale))}
-            />
-          );
-        })}
-      </View>
+      <SingleChoice
+        label={`Scale presets for ${saved.name}`}
+        options={scalePresets.map((preset) => ({ value: preset.title, label: preset.title }))}
+        value={selectedPreset}
+        onChange={(title) => {
+          const preset = scalePresets.find((p) => p.title === title);
+          if (preset) setDraft(toScaleDraft(preset.scale));
+        }}
+      />
 
-      <View style={styles.chips} accessibilityRole="radiogroup">
-        <Chip title="Numbers" selected={draft.kind === "numeric"} onPress={() => switchKind("numeric")} />
-        <Chip title="Labels" selected={draft.kind === "labels"} onPress={() => switchKind("labels")} />
-      </View>
+      <SegmentedControl
+        label={`Scale kind for ${saved.name}`}
+        options={[
+          { value: "numeric" as const, label: "Numbers" },
+          { value: "labels" as const, label: "Labels" },
+        ]}
+        value={draft.kind}
+        onChange={switchKind}
+      />
 
       {draft.kind === "numeric" ? (
-        <View style={styles.row}>
+        <View style={{ flexDirection: "row", gap: spacing.md }}>
           {(["min", "max", "step"] as const).map((field) => (
-            <View key={field} style={styles.numberField}>
-              <Text style={styles.position}>{numberFieldTitles[field]}</Text>
-              <Field
-                keyboardType="decimal-pad"
+            <View key={field} style={{ flex: 1 }}>
+              <NumberInput
+                label={numberFieldTitles[field]}
                 accessibilityLabel={`${numberFieldTitles[field]} for ${saved.name}`}
                 value={draft[field]}
                 onChangeText={(text) => setDraft({ ...draft, [field]: text })}
@@ -183,13 +202,13 @@ function VerdictSettings({ level }: { level: Level }) {
           ))}
         </View>
       ) : (
-        <Field
+        <TextField
           multiline
           placeholder={"One label per line, worst first\nThumbs down\nMeh\nThumbs up"}
           accessibilityLabel={`Labels for ${saved.name}, one per line, worst first`}
           value={draft.labels}
           onChangeText={(labels) => setDraft({ kind: "labels", labels })}
-          style={styles.labels}
+          style={{ minHeight: labelsFieldHeight, textAlignVertical: "top" }}
         />
       )}
 
@@ -201,23 +220,12 @@ function VerdictSettings({ level }: { level: Level }) {
   );
 }
 
+const labelsFieldHeight = 112; // room for about four labels before it scrolls
+
 const numberFieldTitles = { min: "Minimum", max: "Maximum", step: "Step" } as const;
 
 function sameDraft(a: ScaleDraft, b: ScaleDraft): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
-}
-
-function Chip({ title, selected, onPress }: { title: string; selected: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="radio"
-      accessibilityState={{ checked: selected }}
-      onPress={onPress}
-      style={[styles.chip, selected && styles.chipSelected]}
-    >
-      <Text style={selected ? styles.chipTextSelected : styles.chipText}>{title}</Text>
-    </Pressable>
-  );
 }
 
 function AppendDeepest({ collectionId }: { collectionId: string }) {
@@ -232,9 +240,8 @@ function AppendDeepest({ collectionId }: { collectionId: string }) {
   );
 
   return (
-    <View style={styles.level}>
-      <Text style={styles.heading}>Add a deepest Level</Text>
-      <Field placeholder="Name, e.g. Episode" value={name} onChangeText={setName} />
+    <Section title="Add a deepest Level">
+      <TextField placeholder="Name, e.g. Episode" value={name} onChangeText={setName} />
       <ErrorText>
         {append.error ? errorMessage(append.error, { fallback: "Couldn't add it.", badRequest: levelNameMissing }) : null}
       </ErrorText>
@@ -243,7 +250,7 @@ function AppendDeepest({ collectionId }: { collectionId: string }) {
         onPress={() => append.mutate({ collectionId, name })}
         disabled={append.isPending}
       />
-    </View>
+    </Section>
   );
 }
 
@@ -261,38 +268,16 @@ function RemoveDeepest({ collectionId, level }: { collectionId: string; level: L
   }
 
   return (
-    <View style={styles.level}>
-      <Pressable
-        accessibilityRole="button"
+    <Section>
+      <Button
+        variant="secondary"
+        title={remove.isPending ? "Removing…" : `Remove ${level.name}`}
         disabled={remove.isPending}
         onPress={() => remove.mutate({ collectionId })}
-      >
-        <Text style={styles.remove}>{remove.isPending ? "Removing…" : `Remove ${level.name}`}</Text>
-      </Pressable>
+      />
       <ErrorText>{error}</ErrorText>
-    </View>
+    </Section>
   );
 }
 
 const levelNameMissing = "Give the Level a name.";
-
-const styles = StyleSheet.create({
-  screen: { padding: 24, gap: 16 },
-  hint: { color: "#666", fontSize: 15 },
-  heading: { fontSize: 18, fontWeight: "600", marginTop: 8 },
-  level: { gap: 6 },
-  position: { color: "#666", fontSize: 14 },
-  row: { flexDirection: "row", alignItems: "center", gap: 12 },
-  field: { flex: 1 },
-  action: { color: "#2f6fed", fontSize: 16, fontWeight: "600" },
-  remove: { color: "#c62828", fontSize: 16, fontWeight: "600" },
-  verdict: { gap: 8, paddingLeft: 12, borderLeftWidth: 2, borderLeftColor: "#e5e5e5", marginTop: 4 },
-  subheading: { fontSize: 15, fontWeight: "600" },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  chip: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 16, borderWidth: 1, borderColor: "#ccc" },
-  chipSelected: { backgroundColor: "#2f6fed", borderColor: "#2f6fed" },
-  chipText: { fontSize: 15 },
-  chipTextSelected: { fontSize: 15, color: "#fff" },
-  numberField: { flex: 1, gap: 4 },
-  labels: { minHeight: 110, textAlignVertical: "top" },
-});
