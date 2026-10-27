@@ -1,0 +1,114 @@
+{
+  "tool": "mobile-design-review",
+  "version": 1,
+  "date": "2026-10-26",
+  "pass": "static",
+  "designScore": "A-",
+  "slopScore": "A",
+  "categories": {
+    "navigation": "A",
+    "anatomy": "A-",
+    "typography": "A",
+    "color": "A-",
+    "surfaces": "A",
+    "states": "B",
+    "interaction": "A-",
+    "forms": "A-",
+    "performance": "A",
+    "copy": "A-"
+  },
+  "findings": [
+    {
+      "id": "FINDING-001",
+      "impact": "medium",
+      "category": "anatomy",
+      "summary": "Primary actions (New Collection, Add Item, Create Collection) are inline rather than in DESIGN.md's bottom dock; deferred to slice 2 with Log Session",
+      "where": "app/index.tsx, app/collections/[id].tsx, app/items/[id].tsx, app/collections/new.tsx",
+      "status": "open"
+    },
+    {
+      "id": "FINDING-002",
+      "impact": "medium",
+      "category": "states",
+      "tell": 37,
+      "summary": "First loads show a spinner, not a skeleton of the content",
+      "where": "src/components/ui/layout.tsx Loading; every data screen",
+      "status": "open"
+    },
+    {
+      "id": "FINDING-003",
+      "impact": "medium",
+      "category": "states",
+      "tell": 38,
+      "summary": "Lists have no pull-to-refresh and no offline state",
+      "where": "src/components/ui/list-row.tsx CardList",
+      "status": "open"
+    },
+    {
+      "id": "FINDING-004",
+      "impact": "medium",
+      "category": "forms",
+      "tell": 34,
+      "summary": "Some fields use the placeholder as their only visible label (new Item, Level names, Verdict name, new Levels)",
+      "where": "src/components/items.tsx, app/collections/levels/[id].tsx, app/collections/new.tsx",
+      "status": "open"
+    },
+    {
+      "id": "FINDING-005",
+      "impact": "medium",
+      "category": "interaction",
+      "summary": "Verdict steps give no haptic tick (DESIGN.md Verdict control); needs expo-haptics",
+      "where": "src/components/verdict.tsx",
+      "status": "open"
+    },
+    {
+      "id": "FINDING-006",
+      "impact": "medium",
+      "category": "color",
+      "summary": "Destructive actions look like any other action; DESIGN.md has no destructive colour",
+      "where": "src/components/manage.tsx ConfirmDelete, app/collections/levels/[id].tsx RemoveDeepest",
+      "status": "open"
+    },
+    {
+      "id": "FINDING-007",
+      "impact": "polish",
+      "category": "typography",
+      "summary": "Fraunces has no tnum/lnum, so verdict readouts use proportional figures",
+      "where": "src/theme/index.ts",
+      "status": "open"
+    },
+    {
+      "id": "FINDING-008",
+      "impact": "polish",
+      "category": "color",
+      "summary": "Stars and selected chips use ink until Collections have an accent",
+      "where": "src/theme/index.ts selectedColors",
+      "status": "open"
+    },
+    {
+      "id": "FINDING-009",
+      "impact": "polish",
+      "category": "navigation",
+      "summary": "Collection and Item header title is blank while the screen loads",
+      "where": "app/_layout.tsx",
+      "status": "open"
+    },
+    {
+      "id": "FINDING-010",
+      "impact": "medium",
+      "category": "copy",
+      "summary": "Verdict readout shows star glyphs or value/max rather than DESIGN.md's \"4½ of 5\"",
+      "where": "src/lib/verdict.ts formatVerdict",
+      "status": "open"
+    }
+  ],
+  "unverified": [
+    "no simulator or emulator reachable: first-impression narration and Trunk Test not run",
+    "keyboard behaviour on device",
+    "font scale at 1.3x and above",
+    "dark mode on device",
+    "edge-to-edge and safe areas on device",
+    "scroll performance",
+    "font loading on device (bundle verified with expo export only)"
+  ]
+}
