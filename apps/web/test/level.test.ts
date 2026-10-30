@@ -1,4 +1,4 @@
-import type { VerdictScale } from "@repo/shared";
+import type { RatingScale } from "@repo/shared";
 import { describe, expect, it } from "vitest";
 import { createTestClient, createTestUser } from "./harness";
 
@@ -180,7 +180,7 @@ describe("level.updateVerdict", () => {
     expect(after.levels.map((level) => level.overallVerdict.name)).toEqual(["Overall", "Score"]);
   });
 
-  it.each<VerdictScale>([
+  it.each<RatingScale>([
     { kind: "numeric", min: 0, max: 100, step: 1 },
     { kind: "numeric", min: 0, max: 5, step: 0.5 },
     { kind: "labels", labels: ["F", "D", "C", "B", "A", "S"] },
@@ -197,7 +197,7 @@ describe("level.updateVerdict", () => {
     ]);
   });
 
-  it.each<VerdictScale>([
+  it.each<RatingScale>([
     { kind: "numeric", min: 5, max: 1, step: 1 },
     { kind: "numeric", min: 0, max: 10, step: 3 },
     { kind: "numeric", min: 0, max: 10, step: 0 },
@@ -293,7 +293,7 @@ describe("level.updateVerdict", () => {
 
   it("never lets a racing rating and scale change both succeed", async () => {
     const { client, collection, levels } = await tvCollection();
-    const thumbs: VerdictScale = { kind: "labels", labels: ["Down", "Meh", "Up"] };
+    const thumbs: RatingScale = { kind: "labels", labels: ["Down", "Meh", "Up"] };
 
     for (let round = 0; round < 15; round++) {
       const show = await client.item.create({

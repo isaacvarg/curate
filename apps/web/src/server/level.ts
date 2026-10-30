@@ -1,4 +1,4 @@
-import { defaultVerdict, type Level, sameVerdictScale, type VerdictScale, verdictScaleSchema } from "@repo/shared";
+import { defaultVerdict, type Level, sameRatingScale, type RatingScale, ratingScaleSchema } from "@repo/shared";
 import type { Prisma } from "@/generated/prisma/client";
 import { findMemberCollection, findMemberLevel } from "./access";
 import { prisma } from "./db";
@@ -10,8 +10,8 @@ type LevelRow = Pick<
 >;
 
 // A stored Level's Overall Verdict scale (a Json column), checked on read.
-export function overallVerdictScaleOf(level: Pick<LevelRow, "overallVerdictScale">): VerdictScale {
-  return verdictScaleSchema.parse(level.overallVerdictScale);
+export function overallVerdictScaleOf(level: Pick<LevelRow, "overallVerdictScale">): RatingScale {
+  return ratingScaleSchema.parse(level.overallVerdictScale);
 }
 
 export function toLevel(level: LevelRow): Level {
@@ -71,7 +71,7 @@ export const level = {
       });
       // Resending the current scale (say, alongside a rename) isn't a change.
       const currentScale = overallVerdictScaleOf(current);
-      const scaleChanges = input.scale !== undefined && !sameVerdictScale(currentScale, input.scale);
+      const scaleChanges = input.scale !== undefined && !sameRatingScale(currentScale, input.scale);
       if (scaleChanges) {
         const ratingCount = await tx.overallRating.count({ where: { item: { levelId: found.id } } });
         if (ratingCount > 0) throw errors.SCALE_LOCKED({ data: { ratingCount } });

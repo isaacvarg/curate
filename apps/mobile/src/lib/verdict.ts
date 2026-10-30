@@ -1,4 +1,4 @@
-import { type NumericScale, type VerdictScale, type VerdictValue, verdictValueSchema } from "@repo/shared";
+import { type NumericScale, type RatingScale, type RatingValue, ratingValueSchema } from "@repo/shared";
 
 // Up to this many whole stars from 1 reads naturally as a star row.
 const MAX_STARS = 10;
@@ -7,7 +7,7 @@ const MAX_STARS = 10;
 // stepper with a number field takes over.
 const MAX_CHOICES = 11;
 
-function isStarScale(scale: VerdictScale): boolean {
+function isStarScale(scale: RatingScale): boolean {
   return scale.kind === "numeric" && scale.min === 1 && scale.step === 1 && scale.max <= MAX_STARS;
 }
 
@@ -22,7 +22,7 @@ function valueAt(scale: NumericScale, steps: number): number {
 }
 
 export type VerdictOptions =
-  | { kind: "stars" | "choices"; values: VerdictValue[] }
+  | { kind: "stars" | "choices"; values: RatingValue[] }
   // Too many values to list: step through them or type one in.
   | { kind: "stepper" };
 
@@ -30,7 +30,7 @@ export type VerdictOptions =
 // like the default ★1–5, one choice per value for other small scales (each
 // step of a numeric scale, or each label, worst first), and a stepper for
 // large numeric scales like 0–100.
-export function verdictOptions(scale: VerdictScale): VerdictOptions {
+export function verdictOptions(scale: RatingScale): VerdictOptions {
   if (scale.kind === "labels") return { kind: "choices", values: [...scale.labels] };
   const count = stepCount(scale) + 1;
   if (count > MAX_CHOICES) return { kind: "stepper" };
@@ -59,14 +59,14 @@ export function parseNumberField(text: string): number {
 export function parseVerdictInput(scale: NumericScale, text: string): { value: number } | { error: string } {
   const number = parseNumberField(text);
   if (!Number.isFinite(number)) return { error: "Enter a number." };
-  const parsed = verdictValueSchema(scale).safeParse(number);
+  const parsed = ratingValueSchema(scale).safeParse(number);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "That isn't on this scale." };
   return { value: parsed.data as number };
 }
 
 // A Verdict as shown next to an Item: filled and empty stars on a star scale,
 // "value/max" on other numeric scales, or the label itself.
-export function formatVerdict(scale: VerdictScale, value: VerdictValue): string {
+export function formatVerdict(scale: RatingScale, value: RatingValue): string {
   if (scale.kind === "labels") return String(value);
   if (isStarScale(scale)) {
     const filled = Number(value);

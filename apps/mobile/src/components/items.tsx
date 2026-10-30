@@ -1,5 +1,5 @@
 import { ORPCError, isDefinedError } from "@orpc/client";
-import type { VerdictScale } from "@repo/shared";
+import type { RatingScale } from "@repo/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link } from "expo-router";
 import { type ReactNode, useState } from "react";
@@ -20,7 +20,7 @@ export function ItemList({
 }: {
   collectionId: string;
   parentId?: string;
-  scale: VerdictScale;
+  scale: RatingScale;
   emptyText: string;
   header: ReactNode;
 }) {

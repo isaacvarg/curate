@@ -1,4 +1,4 @@
-import { type OverallRating, type VerdictValue, verdictValueSchema } from "@repo/shared";
+import { type OverallRating, type RatingValue, ratingValueSchema } from "@repo/shared";
 import type { Prisma } from "@/generated/prisma/client";
 import { findMemberItem } from "./access";
 import { prisma } from "./db";
@@ -27,7 +27,7 @@ export function ownOverallRating(rows: StoredVerdict[]): OverallRating | null {
   return row ? toOverallRating(row) : null;
 }
 
-function toStoredVerdict(value: VerdictValue): StoredVerdict {
+function toStoredVerdict(value: RatingValue): StoredVerdict {
   return typeof value === "string"
     ? { verdictNumber: null, verdictLabel: value }
     : { verdictNumber: value, verdictLabel: null };
@@ -51,7 +51,7 @@ export const rating = {
         select: { overallVerdictScale: true },
       });
       // The same value rules the phone uses, against this Item's Level's scale.
-      const parsed = verdictValueSchema(overallVerdictScaleOf(level)).safeParse(input.verdict);
+      const parsed = ratingValueSchema(overallVerdictScaleOf(level)).safeParse(input.verdict);
       if (!parsed.success) throw errors.VALUE_OUT_OF_SCALE();
 
       const verdict = toStoredVerdict(parsed.data);

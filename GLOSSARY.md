@@ -96,6 +96,10 @@ _Avoid_: Field type
 An opinion field with an ordered scale, such as fun 4/5, Plot, or overall stars. It is given for an Item overall or per Participant in a Session.
 _Avoid_: Score, grade
 
+**Rating Scale**:
+The bounded, ordered set of values a Rating can take: numbers from a minimum to a maximum in fixed steps, or labels ordered worst first. Every Rating has one, the Verdict included.
+_Avoid_: Range, rating type
+
 **Observation**:
 A non-evaluative field recording what a Participant perceived, such as tasting notes, flavor descriptors, or complexity.
 _Avoid_: Tasting rating, note

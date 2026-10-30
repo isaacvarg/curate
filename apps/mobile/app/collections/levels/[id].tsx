@@ -1,5 +1,5 @@
 import { isDefinedError } from "@orpc/client";
-import { defaultVerdict, type Level, sameVerdictScale } from "@repo/shared";
+import { defaultVerdict, type Level, sameRatingScale } from "@repo/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
@@ -129,7 +129,7 @@ function VerdictSettings({ level }: { level: Level }) {
 
   const parsed = parseScaleDraft(draft);
   const nameChanged = name.trim() !== saved.name;
-  const scaleChanged = "scale" in parsed && !sameVerdictScale(parsed.scale, saved.scale);
+  const scaleChanged = "scale" in parsed && !sameRatingScale(parsed.scale, saved.scale);
   const draftChanged = !sameDraft(draft, toScaleDraft(saved.scale));
   const scaleError = draftChanged && "error" in parsed ? parsed.error : null;
   const canSave = (nameChanged || scaleChanged) && scaleError === null && !update.isPending;
@@ -159,7 +159,7 @@ function VerdictSettings({ level }: { level: Level }) {
   };
 
   const selectedPreset =
-    scalePresets.find((preset) => "scale" in parsed && sameVerdictScale(parsed.scale, preset.scale))?.title ?? null;
+    scalePresets.find((preset) => "scale" in parsed && sameRatingScale(parsed.scale, preset.scale))?.title ?? null;
 
   return (
     <View style={{ gap: spacing.md, paddingTop: spacing.sm }}>

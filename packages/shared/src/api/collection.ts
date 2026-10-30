@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { verdictScaleSchema } from "../verdict";
+import { ratingScaleSchema } from "../rating-scale";
 
 // The single Level a flat Collection (beer, tinned fish) gets when no Level
 // names are given.
@@ -19,7 +19,7 @@ export const levelSchema = z.object({
   id: z.string(),
   name: z.string(),
   position: z.number().int(),
-  overallVerdict: z.object({ name: z.string(), scale: verdictScaleSchema }),
+  overallVerdict: z.object({ name: z.string(), scale: ratingScaleSchema }),
 });
 
 // Only "owner" for now; the household slice adds more roles.

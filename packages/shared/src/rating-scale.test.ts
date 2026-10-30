@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
-  defaultVerdict,
-  sameVerdictScale,
+  type RatingScale,
+  ratingScaleSchema,
+  ratingValueSchema,
+  sameRatingScale,
   toUnitInterval,
-  type VerdictScale,
-  verdictScaleSchema,
-  verdictValueSchema,
-} from "./verdict";
+} from "./rating-scale";
+import { defaultVerdict } from "./verdict";
 
-describe("verdict scale validation", () => {
+describe("rating scale validation", () => {
   it("accepts a five-star numeric scale", () => {
-    expect(verdictScaleSchema.safeParse({ kind: "numeric", min: 1, max: 5, step: 1 }).success).toBe(true);
+    expect(ratingScaleSchema.safeParse({ kind: "numeric", min: 1, max: 5, step: 1 }).success).toBe(true);
   });
 
   it.each([
@@ -20,7 +20,7 @@ describe("verdict scale validation", () => {
     ["tier labels", { kind: "labels", labels: ["F", "D", "C", "B", "A", "S"] }],
     ["two labels", { kind: "labels", labels: ["Thumbs down", "Thumbs up"] }],
   ])("accepts %s", (_, scale) => {
-    expect(verdictScaleSchema.safeParse(scale).success).toBe(true);
+    expect(ratingScaleSchema.safeParse(scale).success).toBe(true);
   });
 
   it.each([
@@ -39,23 +39,23 @@ describe("verdict scale validation", () => {
     ["a label over 50 characters", { kind: "labels", labels: ["x".repeat(51), "Good"] }],
     ["an unknown kind", { kind: "stars", count: 5 }],
   ])("rejects %s", (_, scale) => {
-    expect(verdictScaleSchema.safeParse(scale).success).toBe(false);
+    expect(ratingScaleSchema.safeParse(scale).success).toBe(false);
   });
 
   it("trims labels", () => {
-    expect(verdictScaleSchema.parse({ kind: "labels", labels: [" Down ", "Up"] })).toEqual({
+    expect(ratingScaleSchema.parse({ kind: "labels", labels: [" Down ", "Up"] })).toEqual({
       kind: "labels",
       labels: ["Down", "Up"],
     });
   });
 });
 
-const fiveStars: VerdictScale = { kind: "numeric", min: 1, max: 5, step: 1 };
-const halfStars: VerdictScale = { kind: "numeric", min: 0.5, max: 5, step: 0.5 };
-const tenths: VerdictScale = { kind: "numeric", min: 0, max: 10, step: 0.1 };
-const tiers: VerdictScale = { kind: "labels", labels: ["F", "D", "C", "B", "A", "S"] };
+const fiveStars: RatingScale = { kind: "numeric", min: 1, max: 5, step: 1 };
+const halfStars: RatingScale = { kind: "numeric", min: 0.5, max: 5, step: 0.5 };
+const tenths: RatingScale = { kind: "numeric", min: 0, max: 10, step: 0.1 };
+const tiers: RatingScale = { kind: "labels", labels: ["F", "D", "C", "B", "A", "S"] };
 
-describe("verdict value validation", () => {
+describe("rating value validation", () => {
   it.each([
     ["the minimum of five stars", fiveStars, 1],
     ["the maximum of five stars", fiveStars, 5],
@@ -63,7 +63,7 @@ describe("verdict value validation", () => {
     ["7.3 on a tenths scale", tenths, 7.3],
     ["a tier in the list", tiers, "B"],
   ])("accepts %s", (_, scale, value) => {
-    expect(verdictValueSchema(scale).safeParse(value).success).toBe(true);
+    expect(ratingValueSchema(scale).safeParse(value).success).toBe(true);
   });
 
   it.each([
@@ -74,7 +74,7 @@ describe("verdict value validation", () => {
     ["a label not in the list", tiers, "Z"],
     ["a number on a label scale", tiers, 2],
   ])("rejects %s", (_, scale, value) => {
-    expect(verdictValueSchema(scale).safeParse(value).success).toBe(false);
+    expect(ratingValueSchema(scale).safeParse(value).success).toBe(false);
   });
 
   it.each([
@@ -84,11 +84,11 @@ describe("verdict value validation", () => {
     ["a hair off a half star", halfStars, 3.5000000001, 3.5],
     ["a hair off the top of a tenths scale", tenths, 9.99999999999, 10],
   ])("snaps %s to exactly that step", (_, scale, value, expected) => {
-    expect(verdictValueSchema(scale).parse(value)).toBe(expected);
+    expect(ratingValueSchema(scale).parse(value)).toBe(expected);
   });
 });
 
-describe("verdict conversion to 0–1", () => {
+describe("rating conversion to 0–1", () => {
   it.each([
     ["the minimum of five stars", fiveStars, 1, 0],
     ["the middle of five stars", fiveStars, 3, 0.5],
@@ -112,29 +112,29 @@ describe("verdict conversion to 0–1", () => {
 describe("default verdict", () => {
   it("is Overall on a five-star scale", () => {
     expect(defaultVerdict).toEqual({ name: "Overall", scale: { kind: "numeric", min: 1, max: 5, step: 1 } });
-    expect(verdictScaleSchema.safeParse(defaultVerdict.scale).success).toBe(true);
+    expect(ratingScaleSchema.safeParse(defaultVerdict.scale).success).toBe(true);
   });
 });
 
-describe("verdict scale equality", () => {
+describe("rating scale equality", () => {
   it("treats the same numeric scale as the same, whatever its key order", () => {
     expect(
-      sameVerdictScale({ kind: "numeric", min: 1, max: 5, step: 1 }, { step: 1, max: 5, min: 1, kind: "numeric" }),
+      sameRatingScale({ kind: "numeric", min: 1, max: 5, step: 1 }, { step: 1, max: 5, min: 1, kind: "numeric" }),
     ).toBe(true);
   });
 
-  it.each<[string, VerdictScale]>([
+  it.each<[string, RatingScale]>([
     ["a different max", { kind: "numeric", min: 1, max: 10, step: 1 }],
     ["a different step", { kind: "numeric", min: 1, max: 5, step: 0.5 }],
     ["a label scale", { kind: "labels", labels: ["1", "2", "3", "4", "5"] }],
   ])("treats %s as a different scale from ★1–5", (_, other) => {
-    expect(sameVerdictScale({ kind: "numeric", min: 1, max: 5, step: 1 }, other)).toBe(false);
+    expect(sameRatingScale({ kind: "numeric", min: 1, max: 5, step: 1 }, other)).toBe(false);
   });
 
   it("compares label scales by their labels in order", () => {
-    const tiers: VerdictScale = { kind: "labels", labels: ["C", "B", "A"] };
-    expect(sameVerdictScale(tiers, { kind: "labels", labels: ["C", "B", "A"] })).toBe(true);
-    expect(sameVerdictScale(tiers, { kind: "labels", labels: ["A", "B", "C"] })).toBe(false);
-    expect(sameVerdictScale(tiers, { kind: "labels", labels: ["C", "B", "A", "S"] })).toBe(false);
+    const tiers: RatingScale = { kind: "labels", labels: ["C", "B", "A"] };
+    expect(sameRatingScale(tiers, { kind: "labels", labels: ["C", "B", "A"] })).toBe(true);
+    expect(sameRatingScale(tiers, { kind: "labels", labels: ["A", "B", "C"] })).toBe(false);
+    expect(sameRatingScale(tiers, { kind: "labels", labels: ["C", "B", "A", "S"] })).toBe(false);
   });
 });

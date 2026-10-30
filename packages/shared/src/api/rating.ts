@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // Any Verdict value's shape. Whether it's on the Item's Level's scale is
-// checked against that scale with `verdictValueSchema` once the Level is known.
+// checked against that scale with `ratingValueSchema` once the Level is known.
 const verdictInputSchema = z.union([z.number(), z.string()]);
 
 export const ratingSetOverallInputSchema = z.object({
