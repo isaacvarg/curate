@@ -1,13 +1,15 @@
 import { isDefinedError } from "@orpc/client";
 import { useQuery } from "@tanstack/react-query";
 import { Link, Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { type ComponentProps, Fragment } from "react";
+import { type ComponentProps, Fragment, useState } from "react";
 import { Pressable, View } from "react-native";
 import { ItemAttributes } from "@/components/attributes";
 import { AddItem, ItemList } from "@/components/items";
 import { Button, ErrorText, Loading, Screen, Section, Text } from "@/components/ui";
 import { OverallRatingControl } from "@/components/overall-rating";
 import { orpc } from "@/lib/api";
+import type { ValueDraft } from "@/lib/attribute";
+import { visibleFieldsWithDrafts } from "@/lib/visibility";
 import { spacing } from "@/theme";
 
 // An Item: its breadcrumb (Collection, then ancestors from the top Level),
@@ -20,6 +22,13 @@ export default function ItemScreen() {
   const collection = useQuery({
     ...orpc.collection.get.queryOptions({ input: { id: collectionId ?? "" } }),
     enabled: collectionId !== undefined,
+  });
+
+  // The Attributes as being edited, so conditional fields follow them live.
+  const [drafts, setDrafts] = useState<Record<string, ValueDraft>>({});
+  const levelFields = useQuery({
+    ...orpc.field.list.queryOptions({ input: { levelId: item.data?.levelId ?? "" } }),
+    enabled: item.data !== undefined,
   });
 
   if (item.error || collection.error) {
@@ -45,6 +54,14 @@ export default function ItemScreen() {
   const level = levels[position];
   // Undefined at the deepest Level, which can't have children.
   const childLevel = levels[position + 1];
+  const visibleIds =
+    level && levelFields.data
+      ? new Set(
+          visibleFieldsWithDrafts(levelFields.data, level.overallVerdict, item.data.attributes, drafts).map(
+            (field) => field.id,
+          ),
+        )
+      : undefined;
 
   const header = (
     <>
@@ -82,12 +99,16 @@ export default function ItemScreen() {
             levelId={levelId}
             verdict={level.overallVerdict}
             overallRating={item.data.overallRating}
+            visibleIds={visibleIds}
           />
         </Section>
       ) : null}
       {level ? (
         <Section title="Attributes">
-          <ItemAttributes itemId={id} levelId={levelId} values={item.data.attributes} />
+          <ItemAttributes itemId={id} levelId={levelId} values={item.data.attributes}
+            visibleIds={visibleIds}
+            onDraftsChange={setDrafts}
+          />
         </Section>
       ) : null}
       {childLevel ? <AddItem collectionId={collection.data.id} level={childLevel} parentId={id} /> : null}

@@ -16,11 +16,14 @@ export function OverallRatingControl({
   levelId,
   verdict,
   overallRating,
+  visibleIds,
 }: {
   itemId: string;
   levelId: string;
   verdict: Verdict;
   overallRating: OverallRating | null;
+  // The fields that apply to this Item; the others are neither shown nor rated.
+  visibleIds: ReadonlySet<string> | undefined;
 }) {
   const fields = useQuery(orpc.field.list.queryOptions({ input: { levelId } }));
   const onSuccess = () => queryClient.invalidateQueries({ queryKey: orpc.item.key() });
@@ -28,7 +31,9 @@ export function OverallRatingControl({
   const clear = useMutation(orpc.rating.clearOverall.mutationOptions({ onSuccess }));
   const busy = set.isPending || clear.isPending;
 
-  const ratingFields = (fields.data ?? []).filter((field): field is RatingField => field.kind === "rating");
+  const ratingFields = (fields.data ?? []).filter(
+    (field): field is RatingField => field.kind === "rating" && (visibleIds === undefined || visibleIds.has(field.id)),
+  );
   const setVerdict = (value: RatingValue) => set.mutate({ itemId, verdict: value });
   const setField = (fieldId: string, value: RatingValue | null) =>
     set.mutate({ itemId, fields: { [fieldId]: value } });
