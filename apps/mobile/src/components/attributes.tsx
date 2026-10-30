@@ -1,7 +1,7 @@
 import { isDefinedError } from "@orpc/client";
 import type { AttributeField, FieldValue } from "@repo/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { View } from "react-native";
 import {
   Button,
@@ -29,15 +29,20 @@ import { spacing } from "@/theme";
 
 // An Item's Attributes: every Attribute configured at its Level, filled in
 // here. The values belong to the Item, so every Collection Member sees the
-// same ones. (Conditions arrive later; for now every Attribute is shown.)
+// same ones. Only the Attributes that apply to the Item show (`visibleIds`,
+// judged by the values as they're being edited); hidden ones keep their values.
 export function ItemAttributes({
   itemId,
   levelId,
   values,
+  visibleIds,
+  onDraftsChange,
 }: {
   itemId: string;
   levelId: string;
   values: Record<string, FieldValue>;
+  visibleIds: ReadonlySet<string> | undefined;
+  onDraftsChange: (drafts: Record<string, ValueDraft>) => void;
 }) {
   const fields = useQuery(orpc.field.list.queryOptions({ input: { levelId } }));
 
@@ -48,17 +53,30 @@ export function ItemAttributes({
 
   // Keyed by what was saved and how the Attributes are set up, so the drafts
   // reset once a save (or a settings change) lands.
-  return <AttributesForm key={JSON.stringify([attributes, values])} itemId={itemId} fields={attributes} saved={values} />;
+  return (
+    <AttributesForm
+      key={JSON.stringify([attributes, values])}
+      itemId={itemId}
+      fields={attributes}
+      saved={values}
+      visibleIds={visibleIds}
+      onDraftsChange={onDraftsChange}
+    />
+  );
 }
 
 function AttributesForm({
   itemId,
   fields,
   saved,
+  visibleIds,
+  onDraftsChange,
 }: {
   itemId: string;
   fields: AttributeField[];
   saved: Record<string, FieldValue>;
+  visibleIds: ReadonlySet<string> | undefined;
+  onDraftsChange: (drafts: Record<string, ValueDraft>) => void;
 }) {
   const [drafts, setDrafts] = useState<Record<string, ValueDraft>>(() =>
     Object.fromEntries(fields.map((field) => [field.id, toValueDraft(field, saved[field.id])])),
@@ -70,7 +88,14 @@ function AttributesForm({
     }),
   );
 
-  const change = changedValues(fields, saved, drafts);
+  // The screen judges visibility by these drafts, so it can show and hide the
+  // other fields (Rating fields too) before anything is saved.
+  useEffect(() => onDraftsChange(drafts), [drafts, onDraftsChange]);
+
+  // Hidden Attributes keep their value and can't be written, so changes to
+  // them are left out of the save.
+  const shown = visibleIds === undefined ? fields : fields.filter((field) => visibleIds.has(field.id));
+  const change = changedValues(shown, saved, drafts);
   const pending = "values" in change ? change.values : {};
   const dirty = Object.keys(pending).length > 0;
 
@@ -94,7 +119,7 @@ function AttributesForm({
 
   return (
     <View style={{ gap: spacing.lg }}>
-      {fields.map((field) => (
+      {shown.map((field) => (
         <AttributeControl
           key={field.id}
           field={field}

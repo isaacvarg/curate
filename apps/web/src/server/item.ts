@@ -1,9 +1,9 @@
-import { type BreadcrumbEntry, type FieldValue, type ItemDeletePreview, validateFieldValue } from "@repo/shared";
+import { type BreadcrumbEntry, type FieldValue, type ItemDeletePreview, validateFieldValue, visibleFields } from "@repo/shared";
 import { Prisma } from "@/generated/prisma/client";
 import { findMemberCollection, findMemberItem, memberOf } from "./access";
 import { prisma } from "./db";
 import { authed } from "./orpc";
-import { attributeValuesOf, type FieldRow, toField } from "./field";
+import { attributeValuesOf, expressionLevelOf, type FieldRow, toField } from "./field";
 import { lockCollection } from "./level";
 import { ownOverallRating, ownOverallRatingSelect, ownOverallVerdict, ownOverallVerdictSelect } from "./rating";
 
@@ -119,12 +119,15 @@ export const item = {
         });
         if (!row) throw errors.NOT_FOUND();
         const { _count, overallRatings, ...item } = row;
+        const attributes = await attributeValuesOf(tx, item.id);
+        const level = await expressionLevelOf(tx, item.levelId);
         return {
           ...item,
           overallRating: ownOverallRating(overallRatings),
           breadcrumb: await breadcrumbOf(tx, item.parentId),
           childCount: _count.children,
-          attributes: await attributeValuesOf(tx, item.id),
+          attributes,
+          fields: visibleFields(level, { attributes, ratings: {} }),
         };
       },
       { isolationLevel: "RepeatableRead" },
@@ -172,6 +175,16 @@ export const item = {
         if (!result.success) throw errors.INVALID_VALUE({ data: { fieldId, message: result.message } });
         toWrite.push([fieldId, result.value]);
       }
+
+      // Judged by the Attributes as they will be after this save, so a save
+      // that reveals a field may fill it. Clearing a hidden value is allowed.
+      const after: Record<string, FieldValue> = { ...(await attributeValuesOf(tx, found.id)) };
+      for (const fieldId of toClear) delete after[fieldId];
+      for (const [fieldId, value] of toWrite) after[fieldId] = value;
+      const visible = new Set(
+        visibleFields(await expressionLevelOf(tx, found.levelId), { attributes: after, ratings: {} }).map((f) => f.id),
+      );
+      for (const [fieldId] of toWrite) if (!visible.has(fieldId)) throw errors.FIELD_HIDDEN({ data: { fieldId } });
 
       await tx.attributeValue.deleteMany({ where: { itemId: found.id, fieldId: { in: toClear } } });
       for (const [fieldId, value] of toWrite) {

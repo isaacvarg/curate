@@ -1,6 +1,7 @@
-import { type OverallRating, type OverallVerdict, type RatingValue, ratingScaleSchema, ratingValueSchema } from "@repo/shared";
+import { type OverallRating, type OverallVerdict, type RatingValue, ratingScaleSchema, ratingValueSchema, visibleFields } from "@repo/shared";
 import { Prisma } from "@/generated/prisma/client";
 import { findMemberItem } from "./access";
+import { attributeValuesOf, expressionLevelOf } from "./field";
 import { prisma } from "./db";
 import { lockLevelVerdict, overallVerdictScaleOf } from "./level";
 import { authed } from "./orpc";
@@ -103,6 +104,12 @@ export const rating = {
           select id, kind, "levelId", config from field
           where id in (${Prisma.join(fieldIds)}) for share`;
         const byId = new Map(rows.map((row) => [row.id, row]));
+        const visible = new Set(
+          visibleFields(await expressionLevelOf(tx, item.levelId), {
+            attributes: await attributeValuesOf(tx, item.id),
+            ratings: {},
+          }).map((f) => f.id),
+        );
         for (const [fieldId, value] of Object.entries(input.fields ?? {})) {
           // Only Rating fields at the Item's own Level; anything else,
           // including other Collections' Fields, reads as unknown.
@@ -112,6 +119,7 @@ export const rating = {
             toClear.push(fieldId);
             continue;
           }
+          if (!visible.has(fieldId)) throw errors.FIELD_HIDDEN({ data: { fieldId } });
           const parsed = ratingValueSchema(ratingScaleSchema.parse(row.config)).safeParse(value);
           if (!parsed.success) {
             throw errors.INVALID_VALUE({
