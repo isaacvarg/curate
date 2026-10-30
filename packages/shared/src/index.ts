@@ -56,3 +56,4 @@ export {
   toUnitInterval,
 } from "./rating-scale";
 export { defaultVerdict, type Verdict } from "./verdict";
+export { type ConditionLoop, detectConditionLoops, visibleFields } from "./conditions";
