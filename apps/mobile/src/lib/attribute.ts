@@ -6,6 +6,7 @@ import {
   type FieldValue,
   validateFieldValue,
 } from "@repo/shared";
+import { plural } from "./plural";
 import { parseNumberField } from "./verdict";
 
 // The six Attribute types, in the order they're offered.
@@ -102,21 +103,21 @@ export function parseAttributeDraft(draft: AttributeDraft): { config: AttributeC
 
 // Why field.updateConfig refused a type change (TYPE_LOCKED).
 export function typeLockedMessage(valueCount: number): string {
-  const one = valueCount === 1;
+  const pick = plural(valueCount);
   return (
-    `${valueCount} ${one ? "Item has a value" : "Items have a value"} for this Attribute, so its type is locked: ` +
-    `changing it would change what ${one ? "that value means" : "those values mean"}. ` +
-    `Clear ${one ? "it" : "them"} to unlock the type. You can still rename it and change its unit, bounds and options.`
+    `${valueCount} ${pick("Item has a value", "Items have a value")} for this Attribute, so its type is locked: ` +
+    `changing it would change what ${pick("that value means", "those values mean")}. ` +
+    `Clear ${pick("it", "them")} to unlock the type. You can still rename it and change its unit, bounds and options.`
   );
 }
 
 // Why field.updateConfig refused a change within the type
 // (CONFIG_CONFLICTS_WITH_VALUES).
 export function conflictMessage(conflictCount: number): string {
-  const one = conflictCount === 1;
+  const pick = plural(conflictCount);
   return (
-    `${conflictCount} ${one ? "Item has a value" : "Items have values"} that this change would leave outside the ` +
-    `bounds or options. Change ${one ? "that value" : "those values"} first.`
+    `${conflictCount} ${pick("Item has a value", "Items have values")} that this change would leave outside the ` +
+    `bounds or options. Change ${pick("that value", "those values")} first.`
   );
 }
 
@@ -197,15 +198,4 @@ export function parseIsoDate(text: string): Date | null {
 export function formatIsoDate(date: Date): string {
   const pad = (n: number, width = 2) => String(n).padStart(width, "0");
   return `${pad(date.getFullYear(), 4)}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
-
-// `list` with the entry at `index` moved one place up (-1) or down (1); a
-// move off either end changes nothing.
-export function moveItem<T>(list: readonly T[], index: number, direction: 1 | -1): T[] {
-  const target = index + direction;
-  if (target < 0 || target >= list.length) return [...list];
-  const next = [...list];
-  const [moved] = next.splice(index, 1);
-  next.splice(target, 0, moved as T);
-  return next;
 }

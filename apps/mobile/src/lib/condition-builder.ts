@@ -1,10 +1,13 @@
 import {
   type CompareOperator,
+  conditionLoopDataSchema,
   type Expression,
+  type ExpressionIssue,
   type ExpressionLevel,
   type ExpressionNode,
   type ExpressionProfile,
   expressionSchema,
+  invalidConditionDataSchema,
   type Literal,
   type Reference,
 } from "@repo/shared";
@@ -295,27 +298,36 @@ export function parseCondition(tree: unknown, subjects: readonly Subject[]): Bui
   return rebuilt !== null && canonical(rebuilt) === canonical(expected) ? state : null;
 }
 
+const onlyThisLevel = "A condition can only use Attributes at this Level.";
+const notValid = "That condition isn't valid.";
+
+// What to tell the user about each way a condition can be wrong. null reads out the issue's own
+// message instead. Keyed by the shared issue reasons, so a new reason can't be forgotten.
+const issueProblems: Record<ExpressionIssue["reason"], string | null> = {
+  unsupportedVersion: notValid,
+  malformed: notValid,
+  referenceNotAllowed: onlyThisLevel,
+  unknownField: onlyThisLevel,
+  typeMismatch: "That operator doesn't fit that field's type.",
+  unknownOption: "That option doesn't exist any more. Pick another.",
+  outOfBounds: null,
+  invalidLiteral: null,
+};
+
+function isIssueReason(reason: string): reason is ExpressionIssue["reason"] {
+  return Object.hasOwn(issueProblems, reason);
+}
+
 // Why field.setCondition refused a condition (INVALID_CONDITION or
-// CONDITION_LOOP), or null for any other error.
+// CONDITION_LOOP), or null for any other error. The data is checked against
+// the API's own schemas.
 export function conditionProblem(code: string, data: unknown): string | null {
   if (code === "CONDITION_LOOP") {
-    const names = (data as { fieldNames: string[] }).fieldNames;
-    return `These fields would depend on each other in a loop: ${names.join(", ")}.`;
+    const loop = conditionLoopDataSchema.safeParse(data);
+    return loop.success ? `These fields would depend on each other in a loop: ${loop.data.fieldNames.join(", ")}.` : notValid;
   }
   if (code !== "INVALID_CONDITION") return null;
-  const issue = (data as { issues: { reason: string; message?: string }[] }).issues[0];
-  switch (issue?.reason) {
-    case "referenceNotAllowed":
-    case "unknownField":
-      return "A condition can only use Attributes at this Level.";
-    case "typeMismatch":
-      return "That operator doesn't fit that field's type.";
-    case "unknownOption":
-      return "That option doesn't exist any more. Pick another.";
-    case "outOfBounds":
-    case "invalidLiteral":
-      return issue.message ?? "That value isn't allowed.";
-    default:
-      return "That condition isn't valid.";
-  }
+  const issue = invalidConditionDataSchema.safeParse(data).data?.issues[0];
+  if (issue === undefined || !isIssueReason(issue.reason)) return notValid;
+  return issueProblems[issue.reason] ?? (typeof issue.message === "string" ? issue.message : "That value isn't allowed.");
 }

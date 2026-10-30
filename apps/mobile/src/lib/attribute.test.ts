@@ -6,7 +6,6 @@ import {
   describeAttribute,
   formatIsoDate,
   fromValueDraft,
-  moveItem,
   parseAttributeDraft,
   parseIsoDate,
   toAttributeDraft,
@@ -196,14 +195,5 @@ describe("dates", () => {
   it("returns null for text that isn't a date", () => {
     expect(parseIsoDate("")).toBeNull();
     expect(parseIsoDate("soon")).toBeNull();
-  });
-});
-
-describe("moveItem", () => {
-  it("moves an entry one place and stays put at the ends", () => {
-    expect(moveItem(["a", "b", "c"], 1, -1)).toEqual(["b", "a", "c"]);
-    expect(moveItem(["a", "b", "c"], 1, 1)).toEqual(["a", "c", "b"]);
-    expect(moveItem(["a", "b", "c"], 0, -1)).toEqual(["a", "b", "c"]);
-    expect(moveItem(["a", "b", "c"], 2, 1)).toEqual(["a", "b", "c"]);
   });
 });

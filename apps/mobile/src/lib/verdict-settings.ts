@@ -1,4 +1,5 @@
 import { type RatingScale, ratingScaleSchema } from "@repo/shared";
+import { plural } from "./plural";
 import { parseNumberField } from "./verdict";
 
 // A Verdict scale as typed into the Level settings form, before it's checked.
@@ -51,10 +52,10 @@ export function describeScale(scale: RatingScale): string {
 
 // Why level.updateVerdict refused a scale change (SCALE_LOCKED).
 export function scaleLockedMessage(ratingCount: number): string {
-  const one = ratingCount === 1;
+  const pick = plural(ratingCount);
   return (
-    `This Level already has ${ratingCount} ${one ? "rating" : "ratings"}, so its scale is locked: ` +
-    `changing it would change what ${one ? "that rating means" : "those ratings mean"}. ` +
-    `Clear ${one ? "it" : "them"} to unlock the scale. You can still rename the Verdict.`
+    `This Level already has ${ratingCount} ${pick("rating", "ratings")}, so its scale is locked: ` +
+    `changing it would change what ${pick("that rating means", "those ratings mean")}. ` +
+    `Clear ${pick("it", "them")} to unlock the scale. You can still rename the Verdict.`
   );
 }

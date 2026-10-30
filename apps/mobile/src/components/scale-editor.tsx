@@ -68,13 +68,10 @@ export function ScaleEditor({
           accessibilityLabel={`Labels for ${name}, one per line, worst first`}
           value={draft.labels}
           onChangeText={(labels) => onChange({ kind: "labels", labels })}
-          style={{ minHeight: labelsFieldHeight, textAlignVertical: "top" }}
         />
       )}
     </View>
   );
 }
-
-const labelsFieldHeight = 112; // room for about four labels before it scrolls
 
 const numberFieldTitles = { min: "Minimum", max: "Maximum", step: "Step" } as const;

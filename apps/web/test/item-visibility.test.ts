@@ -1,5 +1,6 @@
 import { type Expression, type RatingScale, visibleFields } from "@repo/shared";
 import { describe, expect, it } from "vitest";
+import { prisma } from "@/server/db";
 import { createTestClient, createTestUser } from "./harness";
 
 const oneToFive: RatingScale = { kind: "numeric", min: 1, max: 5, step: 1 };
@@ -105,6 +106,8 @@ describe("conditional fields on an Item", () => {
     await client.rating.setOverall({ itemId: item.id, fields: { [plot.id]: 5 } });
 
     await client.item.setAttributes({ itemId: item.id, values: { [genre.id]: nonFiction } });
+    // Hidden Rating field values read as absent; the stored value stays.
+    expect((await client.item.get({ id: item.id })).overallRating?.fields).toEqual({});
     await client.item.setAttributes({ itemId: item.id, values: { [genre.id]: fiction } });
 
     const got = await client.item.get({ id: item.id });
@@ -134,5 +137,68 @@ describe("conditional fields on an Item", () => {
     await expect(
       client.item.setAttributes({ itemId: item.id, values: { [sequel.id]: "x" } }),
     ).rejects.toMatchObject({ code: "FIELD_HIDDEN" });
+  });
+});
+
+describe("the Level lock on value writes", () => {
+  const settled = (promise: Promise<unknown>) => {
+    let done = false;
+    promise.then(
+      () => (done = true),
+      () => (done = true),
+    );
+    return () => done;
+  };
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  // A condition change in flight: holds the Level lock like field.setCondition
+  // does and hides Setting (Genre is Fiction, so isNotSet fails), which hides
+  // Sequel and Pace with it. Only Setting's row is touched, so the writes below
+  // can only be held up by the Level lock.
+  async function hidingInFlight() {
+    const setup = await books();
+    const { client, level, genre, fiction, setting, item } = setup;
+    const pace = await client.field.create({ levelId: level.id, name: "Pace", scale: oneToFive });
+    await client.field.setCondition({ id: pace.id, condition: tree({ type: "isSet", operand: attribute(setting.id) }) });
+    await client.item.setAttributes({ itemId: item.id, values: { [genre.id]: fiction, [setting.id]: "Arrakis" } });
+    const hide = tree({ type: "isNotSet", operand: attribute(genre.id) });
+    let commit!: () => void;
+    const release = new Promise<void>((resolve) => (commit = resolve));
+    let locked!: () => void;
+    const holding = new Promise<void>((resolve) => (locked = resolve));
+    const change = prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`select id from level where id = ${level.id} for no key update`;
+      await tx.field.update({ where: { id: setting.id }, data: { condition: hide } });
+      locked();
+      await release;
+    });
+    await holding;
+    return { ...setup, pace, commit, change };
+  }
+
+  it("makes item.setAttributes wait for a condition change, then judge by it", async () => {
+    const { client, sequel, item, commit, change } = await hidingInFlight();
+
+    const write = client.item.setAttributes({ itemId: item.id, values: { [sequel.id]: "Children of Dune" } });
+    const isSettled = settled(write);
+    await wait(300);
+    expect(isSettled()).toBe(false);
+
+    commit();
+    await change;
+    await expect(write).rejects.toMatchObject({ code: "FIELD_HIDDEN" });
+  });
+
+  it("makes rating.setOverall wait for a condition change, then judge by it", async () => {
+    const { client, pace, item, commit, change } = await hidingInFlight();
+
+    const write = client.rating.setOverall({ itemId: item.id, fields: { [pace.id]: 4 } });
+    const isSettled = settled(write);
+    await wait(300);
+    expect(isSettled()).toBe(false);
+
+    commit();
+    await change;
+    await expect(write).rejects.toMatchObject({ code: "FIELD_HIDDEN" });
   });
 });

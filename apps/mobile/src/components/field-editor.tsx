@@ -13,12 +13,12 @@ import {
   type AttributeDraft,
   attributeTypes,
   conflictMessage,
-  moveItem,
   parseAttributeDraft,
   toAttributeDraft,
   typeLockedMessage,
 } from "@/lib/attribute";
 import { errorMessage } from "@/lib/errors";
+import { moveItem } from "@/lib/order";
 import { spacing } from "@/theme";
 
 // Adds an Attribute to a Level, or edits one: its name, its type and the

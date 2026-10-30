@@ -19,9 +19,9 @@ import {
   Text,
 } from "@/components/ui";
 import { orpc, queryClient } from "@/lib/api";
-import { attributeTypes, moveItem } from "@/lib/attribute";
+import { attributeTypes } from "@/lib/attribute";
 import { errorMessage } from "@/lib/errors";
-import { orderAfterMove } from "@/lib/rating-field";
+import { moveItem, orderAfterMove } from "@/lib/order";
 import { describeScale } from "@/lib/verdict-settings";
 import { spacing } from "@/theme";
 

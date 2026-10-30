@@ -251,3 +251,39 @@ describe("field.delete", () => {
   });
 });
 
+
+describe("field.delete racing a value write", () => {
+  it("never leaves an Attribute value behind or fails a write with anything but INVALID_FIELD", async () => {
+    const { client, series, dune } = await bookCollection();
+
+    for (let round = 0; round < 15; round++) {
+      const field = await client.field.create({ levelId: series.id, name: "Race", config: { type: "text" } });
+      const [set, deleted] = await Promise.allSettled([
+        client.item.setAttributes({ itemId: dune.id, values: { [field.id]: "x" } }),
+        client.field.delete({ id: field.id, confirmed: true }),
+      ]);
+
+      expect(deleted.status).toBe("fulfilled");
+      // The value lands and goes with the Field, or the Field is already gone.
+      if (set.status === "rejected") expect(set.reason).toMatchObject({ code: "INVALID_FIELD" });
+      expect(await prisma.attributeValue.count({ where: { fieldId: field.id } })).toBe(0);
+    }
+  });
+
+  it("never leaves a Rating field value behind or fails a write with anything but INVALID_FIELD", async () => {
+    const { client, series, dune } = await bookCollection();
+
+    for (let round = 0; round < 15; round++) {
+      const field = await client.field.create({ levelId: series.id, name: "Race", scale: oneToFive });
+      const [rated, deleted] = await Promise.allSettled([
+        client.rating.setOverall({ itemId: dune.id, fields: { [field.id]: 4 } }),
+        client.field.delete({ id: field.id, confirmed: true }),
+      ]);
+
+      expect(deleted.status).toBe("fulfilled");
+      if (rated.status === "rejected") expect(rated.reason).toMatchObject({ code: "INVALID_FIELD" });
+      expect(await prisma.overallRatingValue.count({ where: { fieldId: field.id } })).toBe(0);
+      await client.rating.clearOverall({ itemId: dune.id });
+    }
+  });
+});

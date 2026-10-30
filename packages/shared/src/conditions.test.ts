@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { conditionReferences, describeCondition, detectConditionLoops, visibleFields } from "./conditions";
+import { conditionReferences, describeCondition, detectConditionLoops, visibleFields, visibleValues } from "./conditions";
 import type { Expression } from "./expression";
 import type { AttributeField, Field } from "./field";
 import { defaultVerdict } from "./verdict";
@@ -205,5 +205,23 @@ describe("describeCondition", () => {
 
   it("falls back for a tree it can't read", () => {
     expect(describeCondition({ nope: true }, fields)).toBe("has a condition");
+  });
+});
+
+describe("visibleValues", () => {
+  const fields: Field[] = [
+    attr("part", { type: "yesNo" }, undefined, 0),
+    attr("series", { type: "text" }, when("part", "yes"), 1),
+    { id: "plot", kind: "rating", name: "Plot", position: 2, scale: { kind: "numeric", min: 1, max: 5, step: 1 }, condition: when("part", "yes") },
+  ];
+
+  it("leaves out the values of hidden fields and keeps the rest", () => {
+    const values = { attributes: { part: false, series: "Dune" }, ratings: { plot: 4 }, verdict: 3 };
+    expect(visibleValues({ fields, verdict }, values)).toEqual({ attributes: { part: false }, ratings: {}, verdict: 3 });
+  });
+
+  it("keeps the values of shown fields", () => {
+    const values = { attributes: { part: true, series: "Dune" }, ratings: { plot: 4 } };
+    expect(visibleValues({ fields, verdict }, values)).toEqual(values);
   });
 });
