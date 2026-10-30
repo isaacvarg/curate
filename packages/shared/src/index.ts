@@ -13,7 +13,9 @@ export {
   type AttributeConfigInput,
   attributeConfigInputSchema,
   type ChoiceOptionInput,
+  type DependentCondition,
   type FieldCreateInput,
+  type FieldDeletePreview,
 } from "./api/field";
 export type { AttributeValues, BreadcrumbEntry, Item, ItemDeletePreview, ItemSummary } from "./api/item";
 export type { OverallRating, OverallVerdict, RatingFieldValues } from "./api/rating";

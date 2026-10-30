@@ -5,6 +5,7 @@ import {
   attributeConfigSchema,
   type AttributeValues,
   type Field,
+  type FieldDeletePreview,
   type FieldValue,
   ratingScaleSchema,
   sameRatingScale,
@@ -62,6 +63,60 @@ async function listFields(db: Db, levelId: string) {
 export async function attributeValuesOf(db: Db, itemId: string): Promise<AttributeValues> {
   const rows = await db.attributeValue.findMany({ where: { itemId }, select: { fieldId: true, value: true } });
   return Object.fromEntries(rows.map((row) => [row.fieldId, row.value as FieldValue]));
+}
+
+// What a delete removes: a whole Field, or one choice option of an Attribute.
+type RemovalTarget =
+  | { kind: "field"; field: Field }
+  | { kind: "option"; field: AttributeField & { config: { options: { id: string; label: string }[] } }; optionId: string };
+
+// Null when `optionId` is given but isn't an option of the Field.
+function removalTarget(field: Field, optionId: string | undefined): RemovalTarget | null {
+  if (optionId === undefined) return { kind: "field", field };
+  if (field.kind !== "attribute" || !("options" in field.config)) return null;
+  if (!field.config.options.some((o) => o.id === optionId)) return null;
+  return { kind: "option", field: field as Extract<RemovalTarget, { kind: "option" }>["field"], optionId };
+}
+
+function usesOption(config: AttributeConfig, value: unknown, optionId: string): boolean {
+  return config.type === "multipleChoice" ? Array.isArray(value) && value.includes(optionId) : value === optionId;
+}
+
+// Nothing depends on a Field yet; the condition ticket lists dependents here.
+async function deletePreviewOf(db: Db, target: RemovalTarget): Promise<FieldDeletePreview> {
+  const { field } = target;
+  let valueCount: number;
+  if (field.kind === "rating") {
+    valueCount = await db.overallRatingValue.count({ where: { fieldId: field.id } });
+  } else if (target.kind === "field") {
+    valueCount = await db.attributeValue.count({ where: { fieldId: field.id } });
+  } else {
+    const values = await db.attributeValue.findMany({ where: { fieldId: field.id }, select: { value: true } });
+    valueCount = values.filter((v) => usesOption(field.config, v.value, target.optionId)).length;
+  }
+  return { valueCount, dependentConditions: [] };
+}
+
+// Takes the option out of the config and out of every value that used it: a
+// single-choice value becomes unset, and a multiple-choice value loses the
+// option (and is unset if that was all it held).
+async function removeOption(
+  tx: Db,
+  target: Extract<RemovalTarget, { kind: "option" }>,
+  lastOption: () => Error,
+): Promise<Field> {
+  const { field, optionId } = target;
+  const options = field.config.options.filter((o) => o.id !== optionId);
+  if (options.length === 0) throw lastOption();
+  const values = await tx.attributeValue.findMany({ where: { fieldId: field.id }, select: { id: true, value: true } });
+  for (const v of values) {
+    if (!usesOption(field.config, v.value, optionId)) continue;
+    const rest = field.config.type === "multipleChoice" ? (v.value as string[]).filter((o) => o !== optionId) : [];
+    if (rest.length === 0) await tx.attributeValue.delete({ where: { id: v.id } });
+    else await tx.attributeValue.update({ where: { id: v.id }, data: { value: rest } });
+  }
+  const config = attributeConfigSchema.parse({ type: field.config.type, options });
+  return toField(await tx.field.update({ where: { id: field.id }, data: { config } }));
 }
 
 export const field = {
@@ -149,6 +204,57 @@ export const field = {
         if (valueCount > 0) throw errors.SCALE_LOCKED({ data: { valueCount } });
       }
       return toField(await tx.field.update({ where: { id: found.id }, data: { config: input.scale } }));
+    });
+  }),
+
+  deletePreview: authed.field.deletePreview.handler(async ({ input, context, errors }) => {
+    return prisma.$transaction(async (tx) => {
+      const found = await findMemberField(tx, input.id, context.user.id);
+      if (!found) throw errors.NOT_FOUND();
+      const target = removalTarget(toField(found), input.optionId);
+      if (!target) throw errors.INVALID_OPTIONS();
+      return deletePreviewOf(tx, target);
+    });
+  }),
+
+  delete: authed.field.delete.handler(async ({ input, context, errors }) => {
+    return prisma.$transaction(async (tx) => {
+      const found = await findMemberField(tx, input.id, context.user.id);
+      if (!found) throw errors.NOT_FOUND();
+      // Same lock as the value writers' share lock: no value lands between the
+      // preview below and the delete.
+      await tx.$queryRaw`select id from field where id = ${found.id} for update`;
+      const current = toField(await tx.field.findUniqueOrThrow({ where: { id: found.id } }));
+      const target = removalTarget(current, input.optionId);
+      if (!target) throw errors.INVALID_OPTIONS();
+      if (!input.confirmed) throw errors.CONFIRMATION_REQUIRED({ data: await deletePreviewOf(tx, target) });
+
+      if (target.kind === "option") {
+        return removeOption(tx, target, errors.LAST_OPTION);
+      }
+      if (current.kind === "rating") {
+        const affected = await tx.overallRatingValue.findMany({
+          where: { fieldId: current.id },
+          select: { overallRatingId: true },
+        });
+        await tx.field.delete({ where: { id: current.id } });
+        // Overall Ratings left with no Verdict and no values stop existing, so
+        // "unrated" stays consistent with setOverall.
+        await tx.overallRating.deleteMany({
+          where: {
+            id: { in: affected.map((a) => a.overallRatingId) },
+            verdictNumber: null,
+            verdictLabel: null,
+            values: { none: {} },
+          },
+        });
+      } else {
+        // Attribute values cascade with the Field.
+        await tx.field.delete({ where: { id: current.id } });
+      }
+      await lockLevelFields(tx, found.levelId);
+      await tx.$executeRaw`update field set position = position - 1 where "levelId" = ${found.levelId} and position > ${current.position}`;
+      return null;
     });
   }),
 
