@@ -34,6 +34,27 @@ export const itemListInputSchema = z.object({
   parentId: z.string().optional(),
 });
 
+export const itemSearchSortSchema = z.object({
+  // Name, the caller's own Verdict, or a number or date Attribute (`fieldId`).
+  by: z.enum(["name", "verdict", "attribute"]),
+  fieldId: z.string().optional(),
+  direction: z.enum(["asc", "desc"]).default("asc"),
+});
+
+export const SEARCH_PAGE_SIZE_MAX = 100;
+
+// Items at one Level across the whole Collection, under every parent. The
+// filter is an Expression in the filter profile, checked on the server; it
+// reads the caller's own Rating field values and Verdict only.
+export const itemSearchInputSchema = z.object({
+  collectionId: z.string(),
+  levelId: z.string(),
+  filter: z.unknown().optional(),
+  sort: itemSearchSortSchema.optional(),
+  limit: z.number().int().min(1).max(SEARCH_PAGE_SIZE_MAX).default(50),
+  offset: z.number().int().min(0).default(0),
+});
+
 export const itemGetInputSchema = z.object({ id: z.string() });
 
 export const itemRenameInputSchema = z.object({ id: z.string(), name: itemNameSchema });
@@ -52,6 +73,8 @@ export const itemDeleteInputSchema = z.object({
   // delete preview and confirmed the cascade.
   confirmed: z.boolean().optional(),
 });
+
+export type ItemSearchSort = z.infer<typeof itemSearchSortSchema>;
 
 export type ItemDeletePreview = z.infer<typeof itemDeletePreviewSchema>;
 
@@ -86,3 +109,11 @@ export const itemSchema = itemSummarySchema.extend({
 export type ItemSummary = z.infer<typeof itemSummarySchema>;
 export type BreadcrumbEntry = z.infer<typeof breadcrumbEntrySchema>;
 export type Item = z.infer<typeof itemSchema>;
+
+// One page of matches, with how many Items matched in all.
+export const itemSearchResultSchema = z.object({
+  items: itemSummarySchema.array(),
+  total: z.number().int(),
+});
+
+export type ItemSearchResult = z.infer<typeof itemSearchResultSchema>;

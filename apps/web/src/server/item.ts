@@ -1,10 +1,25 @@
-import { type BreadcrumbEntry, type FieldValue, type ItemDeletePreview, validateFieldValue } from "@repo/shared";
+import {
+  type BreadcrumbEntry,
+  evaluateExpression,
+  type ExpressionLevel,
+  type Field,
+  type FieldValue,
+  type ItemDeletePreview,
+  type ItemSearchSort,
+  type ItemSummary,
+  type ItemValues,
+  type RatingValue,
+  toUnitInterval,
+  validateExpression,
+  validateFieldValue,
+  visibleFields,
+} from "@repo/shared";
 import { Prisma } from "@/generated/prisma/client";
 import { findMemberCollection, findMemberItem, memberOf } from "./access";
 import { prisma } from "./db";
 import { authed } from "./orpc";
 import { attributeValuesOf, type FieldRow, toField } from "./field";
-import { lockCollection } from "./level";
+import { lockCollection, overallVerdictScaleOf } from "./level";
 import { ownOverallRating, ownOverallRatingSelect, ownOverallVerdict, ownOverallVerdictSelect } from "./rating";
 
 const itemSummarySelect = { id: true, name: true, levelId: true, parentId: true } as const;
@@ -40,7 +55,132 @@ async function breadcrumbOf(db: Prisma.TransactionClient, parentId: string | nul
   return breadcrumb;
 }
 
+// What sorting compares: a number, or a string (names, dates). Absent when the
+// Item has no value to sort by.
+type SortKey = number | string | undefined;
+
+function compareKeys(a: NonNullable<SortKey>, b: NonNullable<SortKey>): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+type SearchErrors = Parameters<Parameters<typeof authed.item.search.handler>[0]>[0]["errors"];
+
+// Every search is computed from the same values the shared evaluator reads
+// (ADR 0002), so a filter can never disagree with a client that evaluates it:
+// load the Level's Items with their Attributes and the caller's own Rating
+// values, hide the values of hidden fields, evaluate, sort, then page.
+async function searchItems(
+  db: Prisma.TransactionClient,
+  input: { collectionId: string; levelId: string; filter?: unknown; sort?: ItemSearchSort; limit: number; offset: number },
+  userId: string,
+  errors: SearchErrors,
+) {
+  const levelRow = await db.level.findFirst({
+    where: { id: input.levelId, collectionId: input.collectionId, collection: memberOf(userId) },
+  });
+  if (!levelRow) throw errors.NOT_FOUND();
+  const verdictScale = overallVerdictScaleOf(levelRow);
+  const level: ExpressionLevel = {
+    fields: await listLevelFields(db, levelRow.id),
+    verdict: { name: levelRow.overallVerdictName, scale: verdictScale },
+  };
+
+  let filter: Parameters<typeof evaluateExpression>[0] | undefined;
+  if (input.filter !== undefined && input.filter !== null) {
+    const checked = validateExpression(input.filter, level, "filter");
+    if (!checked.success) throw errors.INVALID_FILTER({ data: { issues: checked.issues } });
+    filter = checked.expression;
+  }
+
+  const sort = input.sort;
+  let sortField: Field | undefined;
+  if (sort?.by === "attribute") {
+    sortField = level.fields.find((f) => f.id === sort.fieldId && f.kind === "attribute");
+    const type = sortField?.kind === "attribute" ? sortField.config.type : undefined;
+    if (type !== "number" && type !== "date") throw errors.INVALID_SORT();
+  }
+
+  const rows = await db.item.findMany({
+    where: { collectionId: input.collectionId, levelId: levelRow.id },
+    select: {
+      ...itemSummaryFor(userId),
+      attributeValues: { select: { fieldId: true, value: true } },
+      overallRatings: {
+        where: { userId },
+        select: {
+          verdictNumber: true,
+          verdictLabel: true,
+          values: { select: { fieldId: true, valueNumber: true, valueLabel: true } },
+        },
+      },
+    },
+    orderBy: itemOrder,
+  });
+
+  const matches: { summary: ItemSummary; key: SortKey }[] = [];
+  for (const row of rows) {
+    const [own] = row.overallRatings;
+    const values: ItemValues = {
+      attributes: Object.fromEntries(row.attributeValues.map((v) => [v.fieldId, v.value as FieldValue])),
+      ratings: Object.fromEntries((own?.values ?? []).map((v) => [v.fieldId, (v.valueLabel ?? v.valueNumber) as RatingValue])),
+      ...((own?.verdictLabel ?? own?.verdictNumber) != null ? { verdict: (own?.verdictLabel ?? own?.verdictNumber) as RatingValue } : {}),
+    };
+    // A value in a hidden field is as good as not entered.
+    const shown = new Set(visibleFields(level, values).map((f) => f.id));
+    const visible: ItemValues = {
+      ...values,
+      attributes: Object.fromEntries(Object.entries(values.attributes).filter(([id]) => shown.has(id))),
+      ratings: Object.fromEntries(Object.entries(values.ratings).filter(([id]) => shown.has(id))),
+    };
+    if (filter && !evaluateExpression(filter, visible, level)) continue;
+
+    let key: SortKey;
+    if (sort?.by === "name") key = row.name.toLowerCase();
+    else if (sort?.by === "verdict") key = visible.verdict === undefined ? undefined : toUnitInterval(verdictScale, visible.verdict);
+    else if (sortField) {
+      const value = visible.attributes[sortField.id];
+      key = typeof value === "number" || typeof value === "string" ? value : undefined;
+    }
+    matches.push({
+      summary: {
+        id: row.id,
+        name: row.name,
+        levelId: row.levelId,
+        parentId: row.parentId,
+        overallRating: ownOverallVerdict(row.overallRatings),
+      },
+      key,
+    });
+  }
+
+  if (sort) {
+    const sign = sort.direction === "desc" ? -1 : 1;
+    // Stable, so ties keep creation order. Absent values go last either way.
+    matches.sort((a, b) => {
+      if (a.key === undefined || b.key === undefined) return a.key === b.key ? 0 : a.key === undefined ? 1 : -1;
+      return sign * compareKeys(a.key, b.key);
+    });
+  }
+
+  return {
+    items: matches.slice(input.offset, input.offset + input.limit).map((m) => m.summary),
+    total: matches.length,
+  };
+}
+
+async function listLevelFields(db: Prisma.TransactionClient, levelId: string): Promise<Field[]> {
+  const rows = await db.field.findMany({ where: { levelId }, orderBy: { position: "asc" } });
+  return rows.map(toField);
+}
+
 export const item = {
+  search: authed.item.search.handler(async ({ input, context, errors }) => {
+    // One snapshot, so the values and the Level's Fields agree.
+    return prisma.$transaction((tx) => searchItems(tx, input, context.user.id, errors), {
+      isolationLevel: "RepeatableRead",
+    });
+  }),
+
   create: authed.item.create.handler(async ({ input, context, errors }) => {
     return prisma.$transaction(async (tx) => {
       // The Collection lock keeps level.removeDeepest from removing the Level

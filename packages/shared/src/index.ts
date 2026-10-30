@@ -19,7 +19,16 @@ export {
   conditionLoopDataSchema,
   invalidConditionDataSchema,
 } from "./api/field";
-export type { AttributeValues, BreadcrumbEntry, Item, ItemDeletePreview, ItemSummary } from "./api/item";
+export {
+  type AttributeValues,
+  type BreadcrumbEntry,
+  type Item,
+  type ItemDeletePreview,
+  type ItemSearchResult,
+  type ItemSearchSort,
+  type ItemSummary,
+  SEARCH_PAGE_SIZE_MAX,
+} from "./api/item";
 export type { OverallRating, OverallVerdict, RatingFieldValues } from "./api/rating";
 export {
   type AttributeConfig,
