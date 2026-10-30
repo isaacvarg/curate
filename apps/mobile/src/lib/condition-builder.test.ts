@@ -193,6 +193,13 @@ describe("conditionProblem", () => {
     );
   });
 
+  it("falls back to a general message for data it doesn't recognise", () => {
+    expect(conditionProblem("CONDITION_LOOP", undefined)).toBe("That condition isn't valid.");
+    expect(conditionProblem("INVALID_CONDITION", { issues: [{ path: [], reason: "somethingNew" }] })).toBe(
+      "That condition isn't valid.",
+    );
+  });
+
   it("is null for anything else", () => {
     expect(conditionProblem("NOT_FOUND", undefined)).toBeNull();
   });
