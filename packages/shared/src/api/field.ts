@@ -58,14 +58,32 @@ export const fieldUpdateConfigInputSchema = z.object({ id: z.string(), config: a
 
 export const fieldUpdateScaleInputSchema = z.object({ id: z.string(), scale: ratingScaleSchema });
 
+// The condition is checked by the server against the Level's Fields, so a
+// bad one comes back as a typed INVALID_CONDITION error rather than a generic
+// input error.
+export const fieldSetConditionInputSchema = z.object({ id: z.string(), condition: z.unknown() });
+
+export const fieldClearConditionInputSchema = z.object({ id: z.string() });
+
+// A problem found in a condition, as `validateExpression` reports it.
+export const invalidConditionDataSchema = z.object({
+  issues: z.array(z.looseObject({ path: z.array(z.union([z.string(), z.number()])), reason: z.string() })),
+});
+
+// The fields caught in a condition loop, in the order the Level lists them.
+export const conditionLoopDataSchema = z.object({
+  fieldIds: z.array(z.string()),
+  fieldNames: z.array(z.string()),
+});
+
 export const fieldListInputSchema = z.object({ levelId: z.string() });
 
 // What deleting a Field, or one of its choice options, would remove. For an
 // Attribute `valueCount` is the Items with a value (for an option, the Items
 // whose value uses it); for a Rating field it is the Overall Ratings with a
-// value, every Collection Member's. `dependentConditions` lists the
-// conditions that use what is being deleted; none exist yet, so it is always
-// empty until the ticket that adds conditions fills it in.
+// value, every Collection Member's. `dependentConditions` lists the fields
+// whose conditions use what is being deleted ("Plot: only when Genre is
+// Fiction"); while there are any, the delete is refused.
 export const dependentConditionSchema = z.object({ id: z.string(), description: z.string() });
 
 export const fieldDeletePreviewSchema = z.object({

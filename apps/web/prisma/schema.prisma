@@ -244,6 +244,9 @@ model Field {
   name            String
   position        Int
   config          Json
+  // The Expression from @repo/shared that decides whether the Field shows for
+  // an Item (a condition); null when it always shows.
+  condition       Json?
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
   attributeValues AttributeValue[]

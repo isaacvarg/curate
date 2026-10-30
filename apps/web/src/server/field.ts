@@ -4,25 +4,39 @@ import {
   type AttributeField,
   attributeConfigSchema,
   type AttributeValues,
+  conditionReferences,
+  describeCondition,
+  detectConditionLoops,
+  type ExpressionLevel,
+  expressionSchema,
   type Field,
   type FieldDeletePreview,
   type FieldValue,
   ratingScaleSchema,
   sameRatingScale,
+  validateExpression,
   validateFieldValue,
 } from "@repo/shared";
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import { findMemberField, findMemberLevel } from "./access";
 import { prisma } from "./db";
+import { overallVerdictScaleOf } from "./level";
 import { authed } from "./orpc";
 
 type Db = Prisma.TransactionClient;
-export type FieldRow = Pick<Prisma.FieldGetPayload<object>, "id" | "kind" | "name" | "position" | "config">;
+export type FieldRow = Pick<Prisma.FieldGetPayload<object>, "id" | "kind" | "name" | "position" | "config"> & {
+  condition?: unknown;
+};
 
 // A stored Field, its config checked on read: an Attribute's type
 // configuration, or a Rating field's scale.
 export function toField(row: FieldRow): Field {
-  const base = { id: row.id, name: row.name, position: row.position };
+  const base = {
+    id: row.id,
+    name: row.name,
+    position: row.position,
+    ...(row.condition === null || row.condition === undefined ? {} : { condition: row.condition }),
+  };
   return row.kind === "rating"
     ? { ...base, kind: "rating", scale: ratingScaleSchema.parse(row.config) }
     : { ...base, kind: "attribute", config: attributeConfigSchema.parse(row.config) };
@@ -59,6 +73,42 @@ async function listFields(db: Db, levelId: string) {
   return rows.map(toField);
 }
 
+// A Level's Fields and Verdict, what its conditions are checked against.
+async function expressionLevelOf(db: Db, levelId: string): Promise<ExpressionLevel> {
+  const level = await db.level.findUniqueOrThrow({ where: { id: levelId } });
+  return {
+    fields: await listFields(db, levelId),
+    verdict: { name: level.overallVerdictName, scale: overallVerdictScaleOf(level) },
+  };
+}
+
+// The other fields whose conditions read `target`: any of its choice options
+// when `optionIds` is given, otherwise the field itself.
+function dependentConditionsOf(fields: readonly Field[], targetId: string, optionIds?: readonly string[]) {
+  const dependents: FieldDeletePreview["dependentConditions"] = [];
+  for (const field of fields) {
+    if (field.id === targetId || field.condition === undefined) continue;
+    const parsed = expressionSchema.safeParse(field.condition);
+    if (!parsed.success) continue;
+    const reads = conditionReferences(parsed.data).find((r) => r.fieldId === targetId);
+    if (!reads) continue;
+    if (optionIds && !optionIds.some((id) => reads.optionIds.includes(id))) continue;
+    dependents.push({ id: field.id, description: `${field.name}: ${describeCondition(field.condition, fields)}` });
+  }
+  return dependents;
+}
+
+// field.list's view of a Field: the Attributes its condition reads, by name.
+function withDependencies(field: Field, fields: readonly Field[]): Field {
+  const parsed = field.condition === undefined ? undefined : expressionSchema.safeParse(field.condition);
+  if (!parsed?.success) return field;
+  const dependsOn = conditionReferences(parsed.data).flatMap(({ fieldId }) => {
+    const found = fields.find((f) => f.id === fieldId && f.kind === "attribute");
+    return found ? [{ id: found.id, name: found.name }] : [];
+  });
+  return { ...field, dependsOn };
+}
+
 // An Item's Attribute values by Field id.
 export async function attributeValuesOf(db: Db, itemId: string): Promise<AttributeValues> {
   const rows = await db.attributeValue.findMany({ where: { itemId }, select: { fieldId: true, value: true } });
@@ -82,8 +132,7 @@ function usesOption(config: AttributeConfig, value: unknown, optionId: string): 
   return config.type === "multipleChoice" ? Array.isArray(value) && value.includes(optionId) : value === optionId;
 }
 
-// Nothing depends on a Field yet; the condition ticket lists dependents here.
-async function deletePreviewOf(db: Db, target: RemovalTarget): Promise<FieldDeletePreview> {
+async function deletePreviewOf(db: Db, levelId: string, target: RemovalTarget): Promise<FieldDeletePreview> {
   const { field } = target;
   let valueCount: number;
   if (field.kind === "rating") {
@@ -94,7 +143,9 @@ async function deletePreviewOf(db: Db, target: RemovalTarget): Promise<FieldDele
     const values = await db.attributeValue.findMany({ where: { fieldId: field.id }, select: { value: true } });
     valueCount = values.filter((v) => usesOption(field.config, v.value, target.optionId)).length;
   }
-  return { valueCount, dependentConditions: [] };
+  const fields = await listFields(db, levelId);
+  const dependentConditions = dependentConditionsOf(fields, field.id, target.kind === "option" ? [target.optionId] : undefined);
+  return { valueCount, dependentConditions };
 }
 
 // Takes the option out of the config and out of every value that used it: a
@@ -166,6 +217,9 @@ export const field = {
     return prisma.$transaction(async (tx) => {
       const found = await findMemberField(tx, input.id, context.user.id);
       if (!found) throw errors.NOT_FOUND();
+      // The Level lock first, as everywhere that reads conditions, so no
+      // condition can start using an option while it is being dropped.
+      await lockLevelFields(tx, found.levelId);
       // item.setAttributes takes a share lock on the same row before reading
       // the config, so no value can land between the count below and the
       // update, nor be written against a config that is changing.
@@ -176,6 +230,18 @@ export const field = {
       if (!config) throw errors.INVALID_OPTIONS();
 
       const values = await tx.attributeValue.findMany({ where: { fieldId: found.id }, select: { value: true } });
+      // Conditions name this Attribute's type and options, so neither may
+      // change under them. Renaming an option is fine: they use its id.
+      const nextIds = optionIdsOf(config);
+      const dropped = [...optionIdsOf(current.config)].filter((id) => !nextIds.has(id));
+      const dependentConditions = dependentConditionsOf(
+        await listFields(tx, found.levelId),
+        found.id,
+        config.type !== current.config.type ? undefined : dropped,
+      );
+      if (dependentConditions.length > 0 && (config.type !== current.config.type || dropped.length > 0)) {
+        throw errors.FIELD_IN_USE({ data: { valueCount: values.length, dependentConditions } });
+      }
       if (config.type !== current.config.type) {
         if (values.length > 0) throw errors.TYPE_LOCKED({ data: { valueCount: values.length } });
       } else {
@@ -213,7 +279,7 @@ export const field = {
       if (!found) throw errors.NOT_FOUND();
       const target = removalTarget(toField(found), input.optionId);
       if (!target) throw errors.INVALID_OPTIONS();
-      return deletePreviewOf(tx, target);
+      return deletePreviewOf(tx, found.levelId, target);
     });
   }),
 
@@ -221,13 +287,17 @@ export const field = {
     return prisma.$transaction(async (tx) => {
       const found = await findMemberField(tx, input.id, context.user.id);
       if (!found) throw errors.NOT_FOUND();
-      // Same lock as the value writers' share lock: no value lands between the
-      // preview below and the delete.
+      // The Level lock first, so no condition starts using this between the
+      // check below and the delete. Then the same lock as the value writers'
+      // share lock: no value lands between the preview and the delete.
+      await lockLevelFields(tx, found.levelId);
       await tx.$queryRaw`select id from field where id = ${found.id} for update`;
       const current = toField(await tx.field.findUniqueOrThrow({ where: { id: found.id } }));
       const target = removalTarget(current, input.optionId);
       if (!target) throw errors.INVALID_OPTIONS();
-      if (!input.confirmed) throw errors.CONFIRMATION_REQUIRED({ data: await deletePreviewOf(tx, target) });
+      const preview = await deletePreviewOf(tx, found.levelId, target);
+      if (preview.dependentConditions.length > 0) throw errors.FIELD_IN_USE({ data: preview });
+      if (!input.confirmed) throw errors.CONFIRMATION_REQUIRED({ data: preview });
 
       if (target.kind === "option") {
         return removeOption(tx, target, errors.LAST_OPTION);
@@ -258,8 +328,34 @@ export const field = {
     });
   }),
 
+  setCondition: authed.field.setCondition.handler(async ({ input, context, errors }) => {
+    return prisma.$transaction(async (tx) => {
+      const found = await findMemberField(tx, input.id, context.user.id);
+      if (!found) throw errors.NOT_FOUND();
+      await lockLevelFields(tx, found.levelId);
+      const level = await expressionLevelOf(tx, found.levelId);
+      const checked = validateExpression(input.condition, level, "condition");
+      if (!checked.success) throw errors.INVALID_CONDITION({ data: { issues: checked.issues } });
+
+      const withCondition = level.fields.map((f) => (f.id === found.id ? { ...f, condition: checked.expression } : f));
+      const loop = detectConditionLoops(withCondition).find((l) => l.fieldIds.includes(found.id));
+      if (loop) {
+        const names = loop.fieldIds.map((id) => level.fields.find((f) => f.id === id)?.name ?? id);
+        throw errors.CONDITION_LOOP({ data: { fieldIds: loop.fieldIds, fieldNames: names } });
+      }
+      return toField(await tx.field.update({ where: { id: found.id }, data: { condition: checked.expression } }));
+    });
+  }),
+
+  clearCondition: authed.field.clearCondition.handler(async ({ input, context, errors }) => {
+    const found = await findMemberField(prisma, input.id, context.user.id);
+    if (!found) throw errors.NOT_FOUND();
+    return toField(await prisma.field.update({ where: { id: found.id }, data: { condition: Prisma.DbNull } }));
+  }),
+
   list: authed.field.list.handler(async ({ input, context, errors }) => {
     if (!(await findMemberLevel(prisma, input.levelId, context.user.id))) throw errors.NOT_FOUND();
-    return listFields(prisma, input.levelId);
+    const fields = await listFields(prisma, input.levelId);
+    return fields.map((f) => withDependencies(f, fields));
   }),
 };
