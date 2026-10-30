@@ -12,13 +12,12 @@ export {
 export type { BreadcrumbEntry, Item, ItemDeletePreview, ItemSummary } from "./api/item";
 export type { OverallRating } from "./api/rating";
 export {
-  defaultVerdict,
   type NumericScale,
-  sameVerdictScale,
+  type RatingScale,
+  ratingScaleSchema,
+  type RatingValue,
+  ratingValueSchema,
+  sameRatingScale,
   toUnitInterval,
-  type Verdict,
-  type VerdictScale,
-  type VerdictValue,
-  verdictScaleSchema,
-  verdictValueSchema,
-} from "./verdict";
+} from "./rating-scale";
+export { defaultVerdict, type Verdict } from "./verdict";

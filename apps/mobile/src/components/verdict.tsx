@@ -1,4 +1,4 @@
-import type { NumericScale, OverallRating, Verdict, VerdictValue } from "@repo/shared";
+import type { NumericScale, OverallRating, Verdict, RatingValue } from "@repo/shared";
 import { isDefinedError } from "@orpc/client";
 import { useMutation } from "@tanstack/react-query";
 import { Minus, Plus, Star } from "lucide-react-native";
@@ -27,7 +27,7 @@ export function VerdictControl({
   const busy = set.isPending || clear.isPending;
   const current = overallRating?.verdict ?? null;
   const options = verdictOptions(verdict.scale);
-  const choose = (value: VerdictValue) => set.mutate({ itemId, verdict: value });
+  const choose = (value: RatingValue) => set.mutate({ itemId, verdict: value });
 
   const outOfScale = isDefinedError(set.error) && set.error.code === "VALUE_OUT_OF_SCALE";
   const errorText = outOfScale

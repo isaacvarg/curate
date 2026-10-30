@@ -1,4 +1,4 @@
-import type { VerdictScale } from "@repo/shared";
+import type { RatingScale } from "@repo/shared";
 import { describe, expect, it } from "vitest";
 import { createTestClient, createTestUser } from "./harness";
 
@@ -13,7 +13,7 @@ async function beerCollection() {
 
 type TestClient = ReturnType<typeof createTestClient>;
 
-async function setOverallVerdictScale(client: TestClient, levelId: string, scale: VerdictScale) {
+async function setOverallVerdictScale(client: TestClient, levelId: string, scale: RatingScale) {
   await client.level.updateVerdict({ id: levelId, scale });
 }
 

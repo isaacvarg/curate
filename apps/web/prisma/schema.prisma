@@ -120,7 +120,7 @@ model Level {
   name                String
   position            Int
   overallVerdictName  String
-  // A VerdictScale from @repo/shared, parsed with its schema when read.
+  // A RatingScale from @repo/shared, parsed with its schema when read.
   overallVerdictScale Json
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt

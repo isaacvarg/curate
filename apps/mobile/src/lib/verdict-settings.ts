@@ -1,4 +1,4 @@
-import { type VerdictScale, verdictScaleSchema } from "@repo/shared";
+import { type RatingScale, ratingScaleSchema } from "@repo/shared";
 import { parseNumberField } from "./verdict";
 
 // A Verdict scale as typed into the Level settings form, before it's checked.
@@ -7,15 +7,15 @@ export type ScaleDraft =
   // One label per line, worst first.
   | { kind: "labels"; labels: string };
 
-export function toScaleDraft(scale: VerdictScale): ScaleDraft {
+export function toScaleDraft(scale: RatingScale): ScaleDraft {
   if (scale.kind === "labels") return { kind: "labels", labels: scale.labels.join("\n") };
   return { kind: "numeric", min: String(scale.min), max: String(scale.max), step: String(scale.step) };
 }
 
 // The scale a draft describes, checked with the shared scale rules the
 // server applies, or the first reason it isn't valid.
-export function parseScaleDraft(draft: ScaleDraft): { scale: VerdictScale } | { error: string } {
-  let candidate: VerdictScale;
+export function parseScaleDraft(draft: ScaleDraft): { scale: RatingScale } | { error: string } {
+  let candidate: RatingScale;
   if (draft.kind === "labels") {
     const labels = draft.labels
       .split("\n")
@@ -27,13 +27,13 @@ export function parseScaleDraft(draft: ScaleDraft): { scale: VerdictScale } | { 
     if (![min, max, step].every(Number.isFinite)) return { error: "Minimum, maximum and step must be numbers." };
     candidate = { kind: "numeric", min, max, step };
   }
-  const parsed = verdictScaleSchema.safeParse(candidate);
+  const parsed = ratingScaleSchema.safeParse(candidate);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "That isn't a valid scale." };
   return { scale: parsed.data };
 }
 
 // Common scales offered as one-tap starting points.
-export const scalePresets: { title: string; scale: VerdictScale }[] = [
+export const scalePresets: { title: string; scale: RatingScale }[] = [
   { title: "★1–5", scale: { kind: "numeric", min: 1, max: 5, step: 1 } },
   { title: "Half stars", scale: { kind: "numeric", min: 0.5, max: 5, step: 0.5 } },
   { title: "1–10", scale: { kind: "numeric", min: 1, max: 10, step: 1 } },
@@ -43,7 +43,7 @@ export const scalePresets: { title: string; scale: VerdictScale }[] = [
 ];
 
 // A short summary of a scale for the settings screen.
-export function describeScale(scale: VerdictScale): string {
+export function describeScale(scale: RatingScale): string {
   if (scale.kind === "labels") return scale.labels.join(" < ");
   const range = `${scale.min}–${scale.max}`;
   return scale.step === 1 ? range : `${range} in steps of ${scale.step}`;

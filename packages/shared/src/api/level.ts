@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { verdictScaleSchema } from "../verdict";
+import { ratingScaleSchema } from "../rating-scale";
 import { shortNameSchema } from "./collection";
 
 export const levelRenameInputSchema = z.object({ id: z.string(), name: shortNameSchema });
@@ -12,5 +12,5 @@ export const levelRemoveDeepestInputSchema = z.object({ collectionId: z.string()
 export const levelUpdateVerdictInputSchema = z.object({
   id: z.string(),
   name: shortNameSchema.optional(),
-  scale: verdictScaleSchema.optional(),
+  scale: ratingScaleSchema.optional(),
 });
