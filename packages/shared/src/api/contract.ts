@@ -12,6 +12,9 @@ import {
 } from "./collection";
 import {
   fieldCreateInputSchema,
+  fieldDeleteInputSchema,
+  fieldDeletePreviewInputSchema,
+  fieldDeletePreviewSchema,
   fieldListInputSchema,
   fieldRenameInputSchema,
   fieldReorderInputSchema,
@@ -210,6 +213,24 @@ export const contract = {
       })
       .input(fieldUpdateScaleInputSchema)
       .output(fieldSchema),
+    deletePreview: authed
+      .errors({ ...fieldNotFound, ...invalidOptions })
+      .input(fieldDeletePreviewInputSchema)
+      .output(fieldDeletePreviewSchema),
+    // Removes the Field with all its values, or with `optionId` only that
+    // choice option, clearing the values that used it. Always needs
+    // `confirmed`. Returns the Attribute after an option is removed, null when
+    // the whole Field is. Overall Ratings left with nothing in them are
+    // removed too.
+    delete: authed
+      .errors({
+        ...fieldNotFound,
+        ...invalidOptions,
+        ...confirmationRequired(fieldDeletePreviewSchema),
+        LAST_OPTION: { message: "A choice needs at least one option. Delete the Attribute instead." },
+      })
+      .input(fieldDeleteInputSchema)
+      .output(fieldSchema.nullable()),
     // The Level's Fields in order.
     list: authed.errors(levelNotFound).input(fieldListInputSchema).output(fieldSchema.array()),
   },

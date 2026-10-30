@@ -60,4 +60,30 @@ export const fieldUpdateScaleInputSchema = z.object({ id: z.string(), scale: rat
 
 export const fieldListInputSchema = z.object({ levelId: z.string() });
 
+// What deleting a Field, or one of its choice options, would remove. For an
+// Attribute `valueCount` is the Items with a value (for an option, the Items
+// whose value uses it); for a Rating field it is the Overall Ratings with a
+// value, every Collection Member's. `dependentConditions` lists the
+// conditions that use what is being deleted; none exist yet, so it is always
+// empty until the ticket that adds conditions fills it in.
+export const dependentConditionSchema = z.object({ id: z.string(), description: z.string() });
+
+export const fieldDeletePreviewSchema = z.object({
+  valueCount: z.number().int(),
+  dependentConditions: z.array(dependentConditionSchema),
+});
+
+export type FieldDeletePreview = z.infer<typeof fieldDeletePreviewSchema>;
+export type DependentCondition = z.infer<typeof dependentConditionSchema>;
+
+// With `optionId`, only that choice option of an Attribute is removed.
+export const fieldDeletePreviewInputSchema = z.object({ id: z.string(), optionId: z.string().optional() });
+
+export const fieldDeleteInputSchema = z.object({
+  id: z.string(),
+  optionId: z.string().optional(),
+  // Set once the caller has seen the delete preview and confirmed it.
+  confirmed: z.boolean().optional(),
+});
+
 export { fieldSchema };
