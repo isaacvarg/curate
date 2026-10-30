@@ -4,7 +4,10 @@ import {
   type AttributeField,
   attributeConfigSchema,
   type AttributeValues,
+  type Field,
   type FieldValue,
+  ratingScaleSchema,
+  sameRatingScale,
   validateFieldValue,
 } from "@repo/shared";
 import type { Prisma } from "@/generated/prisma/client";
@@ -13,18 +16,15 @@ import { prisma } from "./db";
 import { authed } from "./orpc";
 
 type Db = Prisma.TransactionClient;
-export type FieldRow = Pick<Prisma.FieldGetPayload<object>, "id" | "name" | "position" | "config">;
+export type FieldRow = Pick<Prisma.FieldGetPayload<object>, "id" | "kind" | "name" | "position" | "config">;
 
-// A stored Field (an Attribute, until Rating fields arrive), its config
-// checked on read.
-export function toField(row: FieldRow): AttributeField {
-  return {
-    id: row.id,
-    kind: "attribute",
-    name: row.name,
-    position: row.position,
-    config: attributeConfigSchema.parse(row.config),
-  };
+// A stored Field, its config checked on read: an Attribute's type
+// configuration, or a Rating field's scale.
+export function toField(row: FieldRow): Field {
+  const base = { id: row.id, name: row.name, position: row.position };
+  return row.kind === "rating"
+    ? { ...base, kind: "rating", scale: ratingScaleSchema.parse(row.config) }
+    : { ...base, kind: "attribute", config: attributeConfigSchema.parse(row.config) };
 }
 
 // Fills in ids for the options a caller sent without one. Returns null when an
@@ -68,14 +68,14 @@ export const field = {
   create: authed.field.create.handler(async ({ input, context, errors }) => {
     return prisma.$transaction(async (tx) => {
       if (!(await findMemberLevel(tx, input.levelId, context.user.id))) throw errors.NOT_FOUND();
-      const config = resolveConfig(input.config, new Set());
+      const config = "scale" in input ? input.scale : resolveConfig(input.config, new Set());
       if (!config) throw errors.INVALID_OPTIONS();
       await lockLevelFields(tx, input.levelId);
       const last = await tx.field.aggregate({ where: { levelId: input.levelId }, _max: { position: true } });
       const row = await tx.field.create({
         data: {
           levelId: input.levelId,
-          kind: "attribute",
+          kind: "scale" in input ? "rating" : "attribute",
           name: input.name,
           position: (last._max.position ?? -1) + 1,
           config,
@@ -116,6 +116,7 @@ export const field = {
       // update, nor be written against a config that is changing.
       await tx.$queryRaw`select id from field where id = ${found.id} for update`;
       const current = toField(await tx.field.findUniqueOrThrow({ where: { id: found.id } }));
+      if (current.kind !== "attribute") throw errors.WRONG_KIND();
       const config = resolveConfig(input.config, optionIdsOf(current.config));
       if (!config) throw errors.INVALID_OPTIONS();
 
@@ -130,6 +131,24 @@ export const field = {
         if (conflictCount > 0) throw errors.CONFIG_CONFLICTS_WITH_VALUES({ data: { conflictCount } });
       }
       return toField(await tx.field.update({ where: { id: found.id }, data: { config } }));
+    });
+  }),
+
+  updateScale: authed.field.updateScale.handler(async ({ input, context, errors }) => {
+    return prisma.$transaction(async (tx) => {
+      const found = await findMemberField(tx, input.id, context.user.id);
+      if (!found) throw errors.NOT_FOUND();
+      // rating.setOverall takes a share lock on the same row before reading
+      // the scale, so no value can land between the count below and the update.
+      await tx.$queryRaw`select id from field where id = ${found.id} for update`;
+      const current = toField(await tx.field.findUniqueOrThrow({ where: { id: found.id } }));
+      if (current.kind !== "rating") throw errors.WRONG_KIND();
+      // Resending the current scale (say, alongside a rename) isn't a change.
+      if (!sameRatingScale(current.scale, input.scale)) {
+        const valueCount = await tx.overallRatingValue.count({ where: { fieldId: found.id } });
+        if (valueCount > 0) throw errors.SCALE_LOCKED({ data: { valueCount } });
+      }
+      return toField(await tx.field.update({ where: { id: found.id }, data: { config: input.scale } }));
     });
   }),
 

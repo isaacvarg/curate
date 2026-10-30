@@ -73,7 +73,11 @@ export const level = {
       const currentScale = overallVerdictScaleOf(current);
       const scaleChanges = input.scale !== undefined && !sameRatingScale(currentScale, input.scale);
       if (scaleChanges) {
-        const ratingCount = await tx.overallRating.count({ where: { item: { levelId: found.id } } });
+        // Only Overall Ratings with a Verdict: one with Rating field values
+        // alone has nothing on this scale.
+        const ratingCount = await tx.overallRating.count({
+          where: { item: { levelId: found.id }, OR: [{ verdictNumber: { not: null } }, { verdictLabel: { not: null } }] },
+        });
         if (ratingCount > 0) throw errors.SCALE_LOCKED({ data: { ratingCount } });
       }
       const row = await tx.level.update({

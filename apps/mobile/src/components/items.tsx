@@ -37,7 +37,7 @@ export function ItemList({
         <Link href={{ pathname: "/items/[id]", params: { id: item.id } }} asChild>
           <ListRow
             title={item.name}
-            detail={item.overallRating ? formatVerdict(scale, item.overallRating.verdict) : undefined}
+            detail={item.overallRating?.verdict != null ? formatVerdict(scale, item.overallRating.verdict) : undefined}
             {...position}
           />
         </Link>

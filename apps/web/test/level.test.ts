@@ -284,7 +284,7 @@ describe("level.updateVerdict", () => {
     const show = await client.item.create({ collectionId: collection.id, levelId: levels.show.id, name: "The Wire" });
     await client.level.updateVerdict({ id: levels.show.id, scale: { kind: "numeric", min: 0, max: 100, step: 1 } });
 
-    await expect(client.rating.setOverall({ itemId: show.id, verdict: 85 })).resolves.toEqual({ verdict: 85 });
+    await expect(client.rating.setOverall({ itemId: show.id, verdict: 85 })).resolves.toEqual({ verdict: 85, fields: {} });
     await expect(client.rating.setOverall({ itemId: show.id, verdict: 101 })).rejects.toMatchObject({
       code: "VALUE_OUT_OF_SCALE",
       defined: true,
