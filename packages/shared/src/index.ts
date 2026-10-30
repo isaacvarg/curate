@@ -81,4 +81,5 @@ export {
   describeCondition,
   detectConditionLoops,
   visibleFields,
+  visibleValues,
 } from "./conditions";

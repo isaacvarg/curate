@@ -107,6 +107,15 @@ export function visibleFields(level: ExpressionLevel, item: ItemValues): Field[]
   return level.fields.filter((field) => isShown(field.id));
 }
 
+// The Item's values with those of hidden fields left out, the form
+// evaluateExpression expects. The Verdict always shows.
+export function visibleValues(level: ExpressionLevel, item: ItemValues): ItemValues {
+  const shown = new Set(visibleFields(level, item).map((f) => f.id));
+  const keepShown = <T>(values: Readonly<Record<string, T>>) =>
+    Object.fromEntries(Object.entries(values).filter(([id]) => shown.has(id)));
+  return { ...item, attributes: keepShown(item.attributes), ratings: keepShown(item.ratings) };
+}
+
 // Each Attribute a condition reads, in first-read order, with the choice option
 // ids the tree names for it. Used to find the fields a deletion would break.
 export type ConditionReference = { fieldId: string; optionIds: string[] };
