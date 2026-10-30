@@ -5,8 +5,8 @@ import { type ComponentProps, Fragment } from "react";
 import { Pressable, View } from "react-native";
 import { ItemAttributes } from "@/components/attributes";
 import { AddItem, ItemList } from "@/components/items";
-import { Button, Card, ErrorText, Label, Loading, Screen, Section, Text } from "@/components/ui";
-import { VerdictControl } from "@/components/verdict";
+import { Button, ErrorText, Loading, Screen, Section, Text } from "@/components/ui";
+import { OverallRatingControl } from "@/components/overall-rating";
 import { orpc } from "@/lib/api";
 import { spacing } from "@/theme";
 
@@ -76,12 +76,14 @@ export default function ItemScreen() {
         />
       </View>
       {level ? (
-        <View style={{ gap: spacing.sm }}>
-          <Label>{level.name}</Label>
-          <Card>
-            <VerdictControl itemId={id} verdict={level.overallVerdict} overallRating={item.data.overallRating} />
-          </Card>
-        </View>
+        <Section title="Overall Rating">
+          <OverallRatingControl
+            itemId={id}
+            levelId={levelId}
+            verdict={level.overallVerdict}
+            overallRating={item.data.overallRating}
+          />
+        </Section>
       ) : null}
       {level ? (
         <Section title="Attributes">

@@ -1,76 +1,69 @@
-import type { NumericScale, OverallRating, Verdict, RatingValue } from "@repo/shared";
-import { isDefinedError } from "@orpc/client";
-import { useMutation } from "@tanstack/react-query";
+import type { NumericScale, RatingScale, RatingValue } from "@repo/shared";
 import { Minus, Plus, Star } from "lucide-react-native";
 import { useState } from "react";
 import { View } from "react-native";
 import { Button, ErrorText, IconButton, NumberInput, PressableScale, SingleChoice, Text } from "@/components/ui";
-import { orpc, queryClient } from "@/lib/api";
 import { formatVerdict, parseVerdictInput, stepVerdict, verdictOptions } from "@/lib/verdict";
 import { icon, selectedColors, spacing, useTheme } from "@/theme";
 
-// Sets, changes or clears the caller's Overall Rating of an Item on its
-// Level's Overall Verdict scale: a star row for whole-star scales, otherwise
-// one choice per value, or a stepper for large numeric scales.
-export function VerdictControl({
-  itemId,
-  verdict,
-  overallRating,
+// Sets or changes one Rating on its scale: a star row for whole-star scales,
+// otherwise one choice per value, or a stepper for large numeric scales. It
+// serves the Verdict and Rating fields alike, so `name` is what's being rated
+// ("Overall", "Plot"). `onClear` adds a Clear button, for a Rating that can be
+// cleared by itself (a Rating field, not the Verdict).
+export function RatingControl({
+  name,
+  scale,
+  current,
+  busy,
+  onChoose,
+  onClear,
 }: {
-  itemId: string;
-  verdict: Verdict;
-  overallRating: OverallRating | null;
+  name: string;
+  scale: RatingScale;
+  current: RatingValue | null;
+  busy: boolean;
+  onChoose: (value: RatingValue) => void;
+  onClear?: () => void;
 }) {
-  const onSuccess = () => queryClient.invalidateQueries({ queryKey: orpc.item.key() });
-  const set = useMutation(orpc.rating.setOverall.mutationOptions({ onSuccess }));
-  const clear = useMutation(orpc.rating.clearOverall.mutationOptions({ onSuccess }));
-  const busy = set.isPending || clear.isPending;
-  const current = overallRating?.verdict ?? null;
-  const options = verdictOptions(verdict.scale);
-  const choose = (value: RatingValue) => set.mutate({ itemId, verdict: value });
-
-  const outOfScale = isDefinedError(set.error) && set.error.code === "VALUE_OUT_OF_SCALE";
-  const errorText = outOfScale
-    ? "That isn't on this scale."
-    : set.error || clear.error
-      ? "Couldn't save your rating. Try again."
-      : null;
+  const options = verdictOptions(scale);
 
   return (
     <View style={{ gap: spacing.md }}>
-      <Text variant="ui-strong">{verdict.name}</Text>
+      <Text variant="ui-strong">{name}</Text>
       {options.kind === "stepper" ? (
-        verdict.scale.kind === "numeric" ? (
+        scale.kind === "numeric" ? (
           // Keyed by the saved value, so the draft resets once a save lands.
-          <VerdictStepper
+          <RatingStepper
             key={String(current)}
-            scale={verdict.scale}
+            name={name}
+            scale={scale}
             current={typeof current === "number" ? current : null}
             busy={busy}
-            onSave={choose}
+            onSave={onChoose}
           />
         ) : null
       ) : options.kind === "stars" ? (
         <View style={{ flexDirection: "row", flexWrap: "wrap" }} accessibilityRole="radiogroup">
           {options.values.map((value) => (
-            <VerdictStar
+            <RatingStar
               key={String(value)}
-              label={`${value} of ${options.values.length}`}
+              label={`${name} ${value} of ${options.values.length}`}
               // Every star up to the current one is filled.
               filled={current !== null && Number(value) <= Number(current)}
               selected={value === current}
               unrated={current === null}
               busy={busy}
-              onPress={() => choose(value)}
+              onPress={() => onChoose(value)}
             />
           ))}
         </View>
       ) : (
         <SingleChoice
-          label={verdict.name}
+          label={name}
           options={options.values.map((value) => ({ value, label: String(value) }))}
           value={current}
-          onChange={choose}
+          onChange={onChoose}
           disabled={busy}
         />
       )}
@@ -81,14 +74,13 @@ export function VerdictControl({
           </Text>
         ) : (
           <Text variant="verdict-sm" selectable style={{ flex: 1 }}>
-            {formatVerdict(verdict.scale, current)}
+            {formatVerdict(scale, current)}
           </Text>
         )}
-        {current !== null ? (
-          <Button variant="text" title="Clear" disabled={busy} onPress={() => clear.mutate({ itemId })} />
+        {current !== null && onClear ? (
+          <Button variant="text" title="Clear" accessibilityLabel={`Clear ${name}`} disabled={busy} onPress={onClear} />
         ) : null}
       </View>
-      <ErrorText>{errorText}</ErrorText>
     </View>
   );
 }
@@ -96,7 +88,7 @@ export function VerdictControl({
 // One 48pt star of a star row: filled with ink (the Collection's accent once
 // Collections have one), an outline when empty, and dashed while unrated so
 // "not rated" never reads as zero stars (DESIGN.md Verdict control).
-function VerdictStar({
+function RatingStar({
   label,
   filled,
   selected,
@@ -143,12 +135,14 @@ const starDash = "2 2";
 
 // For numeric scales with too many values to list (0–100, tenths): −/+ move
 // one step, or type a value; nothing is saved until Save.
-function VerdictStepper({
+function RatingStepper({
+  name,
   scale,
   current,
   busy,
   onSave,
 }: {
+  name: string;
   scale: NumericScale;
   current: number | null;
   busy: boolean;
@@ -166,7 +160,7 @@ function VerdictStepper({
         <IconButton icon={Minus} label={`Down ${scale.step}`} disabled={busy} onPress={() => step(-1)} />
         <View style={{ width: stepFieldWidth }}>
           <NumberInput
-            accessibilityLabel={`Verdict from ${scale.min} to ${scale.max}`}
+            accessibilityLabel={`${name} from ${scale.min} to ${scale.max}`}
             placeholder={`${scale.min}–${scale.max}`}
             value={text}
             onChangeText={setText}
