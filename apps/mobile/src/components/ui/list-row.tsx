@@ -12,6 +12,7 @@ const rowHeight = 60; // DESIGN.md: list rows inside a card are at least 60pt ta
 export function ListRow({
   title,
   detail,
+  subtitle,
   first,
   last,
   ...props
@@ -19,6 +20,8 @@ export function ListRow({
   title: string;
   // A value on the right, such as the Verdict.
   detail?: string;
+  // A line under the title, such as "only when Genre is Fiction".
+  subtitle?: string;
   first: boolean;
   last: boolean;
 }) {
@@ -46,9 +49,14 @@ export function ListRow({
         borderCurve: "continuous",
       })}
     >
-      <Text variant="body" style={{ flex: 1 }}>
-        {title}
-      </Text>
+      <View style={{ flex: 1 }}>
+        <Text variant="body">{title}</Text>
+        {subtitle ? (
+          <Text variant="meta" tone="ink-muted">
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
       {detail ? (
         <Text variant="number" tone="ink-muted">
           {detail}

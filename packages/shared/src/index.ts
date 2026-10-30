@@ -16,6 +16,8 @@ export {
   type DependentCondition,
   type FieldCreateInput,
   type FieldDeletePreview,
+  conditionLoopDataSchema,
+  invalidConditionDataSchema,
 } from "./api/field";
 export type { AttributeValues, BreadcrumbEntry, Item, ItemDeletePreview, ItemSummary } from "./api/item";
 export type { OverallRating, OverallVerdict, RatingFieldValues } from "./api/rating";
@@ -63,4 +65,11 @@ export {
   toUnitInterval,
 } from "./rating-scale";
 export { defaultVerdict, type Verdict } from "./verdict";
-export { type ConditionLoop, detectConditionLoops, visibleFields } from "./conditions";
+export {
+  type ConditionLoop,
+  type ConditionReference,
+  conditionReferences,
+  describeCondition,
+  detectConditionLoops,
+  visibleFields,
+} from "./conditions";

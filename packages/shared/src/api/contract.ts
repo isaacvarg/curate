@@ -11,6 +11,8 @@ import {
   levelSchema,
 } from "./collection";
 import {
+  conditionLoopDataSchema,
+  fieldClearConditionInputSchema,
   fieldCreateInputSchema,
   fieldDeleteInputSchema,
   fieldDeletePreviewInputSchema,
@@ -19,8 +21,10 @@ import {
   fieldRenameInputSchema,
   fieldReorderInputSchema,
   fieldSchema,
+  fieldSetConditionInputSchema,
   fieldUpdateConfigInputSchema,
   fieldUpdateScaleInputSchema,
+  invalidConditionDataSchema,
 } from "./field";
 import {
   attributeValuesSchema,
@@ -103,6 +107,16 @@ function confirmationRequired<T extends z.ZodType>(data: T) {
     CONFIRMATION_REQUIRED: { message: "Confirm the delete to remove everything listed.", data },
   } as const;
 }
+
+// A change that would break a condition: the Field, or the choice option, is
+// used by other fields' conditions. The data is the delete preview, whose
+// dependentConditions names them.
+const fieldInUse = {
+  FIELD_IN_USE: {
+    message: "Other fields' conditions use this. Change those conditions first.",
+    data: fieldDeletePreviewSchema,
+  },
+} as const;
 
 export const userSchema = z.object({
   id: z.string(),
@@ -197,6 +211,7 @@ export const contract = {
         },
         ...invalidOptions,
         ...wrongKind,
+        ...fieldInUse,
       })
       .input(fieldUpdateConfigInputSchema)
       .output(fieldSchema),
@@ -227,11 +242,34 @@ export const contract = {
         ...fieldNotFound,
         ...invalidOptions,
         ...confirmationRequired(fieldDeletePreviewSchema),
+        ...fieldInUse,
         LAST_OPTION: { message: "A choice needs at least one option. Delete the Attribute instead." },
       })
       .input(fieldDeleteInputSchema)
       .output(fieldSchema.nullable()),
-    // The Level's Fields in order.
+    // Makes the Field show only for Items whose Attribute values meet the
+    // condition (an Expression from @repo/shared), replacing any it had. It
+    // may read only Attributes at the same Level, must type-check, and must
+    // not create a loop. The Verdict is not a Field, so it can't be made
+    // conditional.
+    setCondition: authed
+      .errors({
+        ...fieldNotFound,
+        INVALID_CONDITION: {
+          message: "That condition isn't valid for this Level's Attributes.",
+          data: invalidConditionDataSchema,
+        },
+        CONDITION_LOOP: {
+          message: "Those conditions would depend on each other in a loop.",
+          data: conditionLoopDataSchema,
+        },
+      })
+      .input(fieldSetConditionInputSchema)
+      .output(fieldSchema),
+    // The Field always shows again. Succeeds when it had no condition.
+    clearCondition: authed.errors(fieldNotFound).input(fieldClearConditionInputSchema).output(fieldSchema),
+    // The Level's Fields in order, each condition's dependencies resolved in
+    // `dependsOn`.
     list: authed.errors(levelNotFound).input(fieldListInputSchema).output(fieldSchema.array()),
   },
   item: {

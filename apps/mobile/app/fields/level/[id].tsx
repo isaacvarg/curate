@@ -1,5 +1,5 @@
 import { ORPCError } from "@orpc/client";
-import type { AttributeField, Field, FieldKind, RatingField } from "@repo/shared";
+import { type AttributeField, describeCondition, type Field, type FieldKind, type RatingField } from "@repo/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Link, Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { ChevronDown, ChevronUp } from "lucide-react-native";
@@ -95,6 +95,7 @@ export default function LevelFields() {
         <FieldList
           kind="rating"
           fields={ratingFields}
+          allFields={all}
           levelId={id}
           emptyText="No Rating fields yet."
           detail={(field) => describeScale(field.scale)}
@@ -114,6 +115,7 @@ export default function LevelFields() {
         <FieldList
           kind="attribute"
           fields={attributes}
+          allFields={all}
           levelId={id}
           emptyText="No Attributes yet."
           detail={(field) => attributeTypes.find((t) => t.value === field.config.type)?.label}
@@ -145,6 +147,7 @@ export default function LevelFields() {
 function FieldList<T extends Field>({
   kind,
   fields,
+  allFields,
   levelId,
   emptyText,
   detail,
@@ -154,6 +157,8 @@ function FieldList<T extends Field>({
 }: {
   kind: FieldKind;
   fields: T[];
+  // Every Field at the Level, which a condition's summary names.
+  allFields: Field[];
   levelId: string;
   emptyText: string;
   detail: (field: T) => string | undefined;
@@ -194,7 +199,11 @@ function FieldList<T extends Field>({
     <View>
       {fields.map((field, index) => (
         <Link key={field.id} href={{ pathname: "/fields/[id]", params: { id: field.id, levelId } }} asChild>
-          <ListRow title={field.name} detail={detail(field)} first={index === 0} last={index === fields.length - 1} />
+          <ListRow
+            title={field.name}
+            detail={detail(field)}
+            subtitle={field.condition === undefined ? undefined : describeCondition(field.condition, allFields)}
+            first={index === 0} last={index === fields.length - 1} />
         </Link>
       ))}
     </View>

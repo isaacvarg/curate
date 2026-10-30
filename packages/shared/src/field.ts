@@ -68,8 +68,12 @@ const fieldBase = {
   id: z.string().min(1),
   name: fieldNameSchema,
   position: z.number().int().min(0),
-  // Room for the optional condition (an expression tree) added next.
+  // The optional condition: an Expression that decides whether the Field
+  // shows. Left unchecked here so a stored tree the app can't read still
+  // loads; validateExpression is what accepts one.
   condition: z.unknown().optional(),
+  // Set by field.list only: the Attributes the condition reads, for display.
+  dependsOn: z.array(z.object({ id: z.string(), name: z.string() })).optional(),
 };
 
 export const attributeFieldSchema = z.object({

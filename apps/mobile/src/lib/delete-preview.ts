@@ -30,12 +30,15 @@ export function describeItemDelete({ descendantCount, overallRatingCount }: Item
 }
 
 // What the user reads before confirming the delete of an Attribute, a Rating
-// field, or one choice option. Conditions that depend on it are listed when
-// there are any.
+// field, or one choice option. While other fields' conditions use it, it can't
+// be deleted: they are named instead of the counts.
 export function describeFieldDelete(
   { valueCount, dependentConditions }: FieldDeletePreview,
   what: "attribute" | "rating" | "option",
 ): string {
+  if (dependentConditions.length > 0) {
+    return `Other fields' conditions use it, so it can't be deleted yet: ${dependentConditions.map((c) => c.description).join("; ")}. Change or clear those conditions first.`;
+  }
   let text: string;
   if (what === "attribute") {
     text =
@@ -53,6 +56,5 @@ export function describeFieldDelete(
         ? "No Item uses this option, so nothing else changes."
         : `This clears the option from ${count(valueCount, "Item", "Items")}. Their other choices stay.`;
   }
-  if (dependentConditions.length === 0) return text;
-  return `${text} Conditions that use it: ${dependentConditions.map((c) => c.description).join("; ")}.`;
+  return text;
 }

@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
+import { FieldCondition } from "@/components/field-condition";
 import { FieldDelete } from "@/components/field-delete";
 import { ScaleEditor } from "@/components/scale-editor";
 import { Button, ErrorText, Hint, Section, TextField } from "@/components/ui";
@@ -62,6 +63,8 @@ export function RatingFieldEditor({ levelId, field }: { levelId: string; field?:
             : "Labels suit things like 🔥 / 🔥🔥 / 🔥🔥🔥. List them worst first."}
         </Hint>
       </Section>
+      {field ? <FieldCondition levelId={levelId} field={field} /> : null}
+
       <View style={{ gap: spacing.md }}>
         <ErrorText>{error}</ErrorText>
         <Button

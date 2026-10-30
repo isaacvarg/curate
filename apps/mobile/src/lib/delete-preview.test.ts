@@ -76,11 +76,17 @@ describe("describeFieldDelete", () => {
   it("lists the conditions that depend on it", () => {
     expect(
       describeFieldDelete(
-        { valueCount: 0, dependentConditions: [{ id: "c1", description: "ABV shows when Genre is Beer" }] },
+        {
+          valueCount: 3,
+          dependentConditions: [
+            { id: "c1", description: "Plot: only when Genre is Fiction" },
+            { id: "c2", description: "Setting: only when Genre is Fiction" },
+          ],
+        },
         "attribute",
       ),
     ).toBe(
-      "No Item has a value for it, so nothing else is deleted. Conditions that use it: ABV shows when Genre is Beer.",
+      "Other fields' conditions use it, so it can't be deleted yet: Plot: only when Genre is Fiction; Setting: only when Genre is Fiction. Change or clear those conditions first.",
     );
   });
 });

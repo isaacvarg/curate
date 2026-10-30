@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectConditionLoops, visibleFields } from "./conditions";
+import { conditionReferences, describeCondition, detectConditionLoops, visibleFields } from "./conditions";
 import type { Expression } from "./expression";
 import type { AttributeField, Field } from "./field";
 import { defaultVerdict } from "./verdict";
@@ -140,5 +140,70 @@ describe("visibleFields", () => {
       attr("c", { type: "text" }),
     ];
     expect(ids(visibleFields({ fields, verdict }, { attributes: { a: "x", b: "y" }, ratings: {} }))).toEqual(["c"]);
+  });
+});
+
+describe("conditionReferences", () => {
+  it("lists each Attribute a condition reads with the option ids it names", () => {
+    const condition: Expression = {
+      version: 1,
+      root: {
+        type: "allOf",
+        operands: [
+          { type: "compare", op: "=", left: { type: "attribute", fieldId: "genre" }, right: { type: "option", optionId: "fiction" } },
+          { type: "includesAnyOf", left: { type: "attribute", fieldId: "tags" }, right: { type: "options", optionIds: ["a", "b"] } },
+          { type: "not", operand: { type: "isSet", operand: { type: "attribute", fieldId: "series" } } },
+        ],
+      },
+    };
+    expect(conditionReferences(condition)).toEqual([
+      { fieldId: "genre", optionIds: ["fiction"] },
+      { fieldId: "tags", optionIds: ["a", "b"] },
+      { fieldId: "series", optionIds: [] },
+    ]);
+  });
+});
+
+describe("describeCondition", () => {
+  const genre = attr("genre", { type: "singleChoice", options: [{ id: "f", label: "Fiction" }, { id: "n", label: "Non-fiction" }] });
+  const abv = attr("abv", { type: "number", unit: "%" });
+  const time = attr("time", { type: "number", unit: "min" });
+  const signed = attr("signed", { type: "yesNo" });
+  const tags = attr("tags", { type: "multipleChoice", options: [{ id: "a", label: "Epic" }, { id: "b", label: "Crime" }] });
+  const fields: Field[] = [
+    { ...genre, name: "Genre" },
+    { ...abv, name: "ABV" },
+    { ...time, name: "Time" },
+    { ...signed, name: "Signed" },
+    { ...tags, name: "Tags" },
+  ];
+  const ref = (fieldId: string) => ({ type: "attribute", fieldId }) as const;
+  const say = (root: Expression["root"]) => describeCondition({ version: 1, root }, fields);
+
+  it("reads a single row as a phrase", () => {
+    expect(say({ type: "compare", op: "=", left: ref("genre"), right: { type: "option", optionId: "f" } })).toBe("only when Genre is Fiction");
+    expect(say({ type: "compare", op: "!=", left: ref("genre"), right: { type: "option", optionId: "f" } })).toBe("only when Genre is not Fiction");
+    expect(say({ type: "isAnyOf", left: ref("genre"), right: { type: "options", optionIds: ["f", "n"] } })).toBe("only when Genre is any of Fiction, Non-fiction");
+    expect(say({ type: "includesAllOf", left: ref("tags"), right: { type: "options", optionIds: ["a", "b"] } })).toBe("only when Tags includes all of Epic, Crime");
+  });
+
+  it("writes numbers with their unit and yes/no as yes or no", () => {
+    expect(say({ type: "compare", op: ">=", left: ref("abv"), right: { type: "number", value: 6 } })).toBe("only when ABV ≥ 6%");
+    expect(say({ type: "compare", op: "<", left: ref("time"), right: { type: "number", value: 30 } })).toBe("only when Time < 30 min");
+    expect(say({ type: "compare", op: "=", left: ref("signed"), right: { type: "boolean", value: true } })).toBe("only when Signed is yes");
+    expect(say({ type: "isNotSet", operand: ref("signed") })).toBe("only when Signed is not set");
+  });
+
+  it("joins rows with and / or", () => {
+    const rows = [
+      { type: "isSet", operand: ref("abv") },
+      { type: "isSet", operand: ref("time") },
+    ] as const;
+    expect(say({ type: "allOf", operands: [...rows] })).toBe("only when ABV is set and Time is set");
+    expect(say({ type: "anyOf", operands: [...rows] })).toBe("only when ABV is set or Time is set");
+  });
+
+  it("falls back for a tree it can't read", () => {
+    expect(describeCondition({ nope: true }, fields)).toBe("has a condition");
   });
 });

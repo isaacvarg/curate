@@ -53,6 +53,7 @@ export function FieldDelete({
         onCancel?.();
       }}
       description={preview.data ? describeFieldDelete(preview.data, what) : null}
+      blocked={(preview.data?.dependentConditions.length ?? 0) > 0}
       deleting={remove.isPending}
       error={
         preview.error
