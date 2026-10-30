@@ -153,6 +153,27 @@ describe("field.updateScale", () => {
 
     expect(await client.field.updateScale({ id: plot.id, scale: hype })).toMatchObject({ scale: hype });
   });
+
+  it("never lets a racing value and scale change both succeed", async () => {
+    const { client, series, item } = await bookCollection();
+    const field = await client.field.create({ levelId: series.id, name: "Race", scale: oneToFive });
+
+    for (let round = 0; round < 15; round++) {
+      const [rated, rescaled] = await Promise.allSettled([
+        client.rating.setOverall({ itemId: item.id, fields: { [field.id]: 4 } }),
+        client.field.updateScale({ id: field.id, scale: hype }),
+      ]);
+
+      // Either the value lands first and the scale is locked, or the scale
+      // changes first and 4 is no longer on it: never both.
+      expect([rated.status, rescaled.status].sort()).toEqual(["fulfilled", "rejected"]);
+      if (rescaled.status === "fulfilled") {
+        await client.field.updateScale({ id: field.id, scale: oneToFive });
+      } else {
+        await client.rating.clearOverall({ itemId: item.id });
+      }
+    }
+  });
 });
 
 describe("rating.setOverall with Rating fields", () => {
