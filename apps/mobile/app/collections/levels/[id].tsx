@@ -1,7 +1,7 @@
 import { isDefinedError } from "@orpc/client";
 import { defaultVerdict, type Level, sameRatingScale } from "@repo/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
 import {
@@ -64,7 +64,7 @@ export default function LevelSettings() {
       <Hint>Top Level first. Only the deepest Level can be removed, and only while it has no Items.</Hint>
       {levels.map((level) => (
         // Keyed by name and Verdict too, so the fields reset after a save lands.
-        <LevelRow key={levelRowKey(level)} level={level} />
+        <LevelRow key={levelRowKey(level)} level={level} collectionId={id} />
       ))}
       {deepest && levels.length > 1 ? <RemoveDeepest collectionId={id} level={deepest} /> : null}
       <AppendDeepest collectionId={id} />
@@ -82,7 +82,8 @@ function invalidateCollection() {
   return queryClient.invalidateQueries({ queryKey: orpc.collection.key() });
 }
 
-function LevelRow({ level }: { level: Level }) {
+function LevelRow({ level, collectionId }: { level: Level; collectionId: string }) {
+  const router = useRouter();
   const [name, setName] = useState(level.name);
   const rename = useMutation(orpc.level.rename.mutationOptions({ onSuccess: invalidateCollection }));
   const changed = name.trim() !== level.name;
@@ -108,6 +109,14 @@ function LevelRow({ level }: { level: Level }) {
         {rename.error ? errorMessage(rename.error, { fallback: "Couldn't rename it.", badRequest: levelNameMissing }) : null}
       </ErrorText>
       <VerdictSettings level={level} />
+      <Button
+        variant="secondary"
+        title="Fields"
+        accessibilityLabel={`Fields for ${level.name}`}
+        onPress={() =>
+          router.push({ pathname: "/fields/level/[id]", params: { id: level.id, collectionId } })
+        }
+      />
     </Card>
   );
 }

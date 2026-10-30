@@ -11,6 +11,15 @@ import {
   levelSchema,
 } from "./collection";
 import {
+  fieldCreateInputSchema,
+  fieldListInputSchema,
+  fieldRenameInputSchema,
+  fieldReorderInputSchema,
+  fieldSchema,
+  fieldUpdateConfigInputSchema,
+} from "./field";
+import {
+  attributeValuesSchema,
   itemCreateInputSchema,
   itemDeleteInputSchema,
   itemDeletePreviewSchema,
@@ -18,6 +27,7 @@ import {
   itemListInputSchema,
   itemRenameInputSchema,
   itemSchema,
+  itemSetAttributesInputSchema,
   itemSummarySchema,
 } from "./item";
 import {
@@ -55,6 +65,14 @@ const levelNotFound = { NOT_FOUND: { message: "Level not found." } } as const;
 // outside its range, off its step, not one of its labels, or the wrong kind.
 const valueOutOfScale = {
   VALUE_OUT_OF_SCALE: { message: "That value isn't on this Verdict's scale." },
+} as const;
+
+// A Field in a Collection the caller isn't a member of reads as missing too.
+const fieldNotFound = { NOT_FOUND: { message: "Field not found." } } as const;
+
+// An option id in a Field's configuration that isn't one of that Field's own.
+const invalidOptions = {
+  INVALID_OPTIONS: { message: "An option id doesn't belong to this Attribute." },
 } as const;
 
 // A delete that would remove more than the one thing named needs the
@@ -128,6 +146,41 @@ export const contract = {
       .input(levelUpdateVerdictInputSchema)
       .output(levelSchema),
   },
+  field: {
+    // Adds an Attribute after the Level's last Field. Option ids are minted by
+    // the server.
+    create: authed.errors({ ...levelNotFound, ...invalidOptions }).input(fieldCreateInputSchema).output(fieldSchema),
+    rename: authed.errors(fieldNotFound).input(fieldRenameInputSchema).output(fieldSchema),
+    // `ids` must list every Field at the Level exactly once.
+    reorder: authed
+      .errors({
+        ...levelNotFound,
+        INVALID_ORDER: { message: "List every Field at this Level exactly once." },
+      })
+      .input(fieldReorderInputSchema)
+      .output(fieldSchema.array()),
+    // Replaces the type configuration. Changing the type is refused once any
+    // Item has a value; within a type, the new unit, bounds and options must
+    // still allow every stored value, and options values use can't be dropped
+    // here.
+    updateConfig: authed
+      .errors({
+        ...fieldNotFound,
+        TYPE_LOCKED: {
+          message: "The type is locked because Items already have values for this Attribute.",
+          data: z.object({ valueCount: z.number().int() }),
+        },
+        CONFIG_CONFLICTS_WITH_VALUES: {
+          message: "That change would leave values outside the Attribute's bounds or options.",
+          data: z.object({ conflictCount: z.number().int() }),
+        },
+        ...invalidOptions,
+      })
+      .input(fieldUpdateConfigInputSchema)
+      .output(fieldSchema),
+    // The Level's Fields in order.
+    list: authed.errors(levelNotFound).input(fieldListInputSchema).output(fieldSchema.array()),
+  },
   item: {
     create: authed
       .errors({ ...collectionNotFound, ...invalidStructure })
@@ -141,6 +194,20 @@ export const contract = {
       .output(itemSummarySchema.array()),
     get: authed.errors(itemNotFound).input(itemGetInputSchema).output(itemSchema),
     rename: authed.errors(itemNotFound).input(itemRenameInputSchema).output(itemSummarySchema),
+    // All or nothing: one invalid value leaves every value as it was. Returns
+    // the Item's Attribute values after the change.
+    setAttributes: authed
+      .errors({
+        ...itemNotFound,
+        // A Field that isn't an Attribute at this Item's Level.
+        INVALID_FIELD: { message: "That isn't an Attribute at this Item's Level." },
+        INVALID_VALUE: {
+          message: "That value doesn't fit this Attribute.",
+          data: z.object({ fieldId: z.string(), message: z.string() }),
+        },
+      })
+      .input(itemSetAttributesInputSchema)
+      .output(attributeValuesSchema),
     deletePreview: authed.errors(itemNotFound).input(itemGetInputSchema).output(itemDeletePreviewSchema),
     // An Item with no children is deleted straight away. One with children
     // needs `confirmed`, so a whole Show can't be wiped by accident; then its

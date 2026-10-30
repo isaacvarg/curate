@@ -9,7 +9,8 @@ export {
   defaultLevelName,
   type Level,
 } from "./api/collection";
-export type { BreadcrumbEntry, Item, ItemDeletePreview, ItemSummary } from "./api/item";
+export { type AttributeConfigInput, attributeConfigInputSchema, type ChoiceOptionInput } from "./api/field";
+export type { AttributeValues, BreadcrumbEntry, Item, ItemDeletePreview, ItemSummary } from "./api/item";
 export type { OverallRating } from "./api/rating";
 export {
   type AttributeConfig,
@@ -19,6 +20,7 @@ export {
   type ChoiceOption,
   type Field,
   type FieldKind,
+  fieldNameSchema,
   fieldSchema,
   type FieldValue,
   type FieldValueResult,

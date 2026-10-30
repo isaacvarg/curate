@@ -1,8 +1,9 @@
-import type { BreadcrumbEntry, ItemDeletePreview } from "@repo/shared";
-import type { Prisma } from "@/generated/prisma/client";
+import { type BreadcrumbEntry, type FieldValue, type ItemDeletePreview, validateFieldValue } from "@repo/shared";
+import { Prisma } from "@/generated/prisma/client";
 import { findMemberCollection, findMemberItem, memberOf } from "./access";
 import { prisma } from "./db";
 import { authed } from "./orpc";
+import { attributeValuesOf, type FieldRow, toField } from "./field";
 import { lockCollection } from "./level";
 import { ownOverallRating, ownOverallRatingSelect } from "./rating";
 
@@ -113,7 +114,12 @@ export const item = {
         });
         if (!row) throw errors.NOT_FOUND();
         const { _count, ...item } = withOverallRating(row);
-        return { ...item, breadcrumb: await breadcrumbOf(tx, item.parentId), childCount: _count.children };
+        return {
+          ...item,
+          breadcrumb: await breadcrumbOf(tx, item.parentId),
+          childCount: _count.children,
+          attributes: await attributeValuesOf(tx, item.id),
+        };
       },
       { isolationLevel: "RepeatableRead" },
     );
@@ -128,6 +134,49 @@ export const item = {
       select: itemSummaryFor(context.user.id),
     });
     return withOverallRating(row);
+  }),
+
+  setAttributes: authed.item.setAttributes.handler(async ({ input, context, errors }) => {
+    return prisma.$transaction(async (tx) => {
+      const found = await findMemberItem(tx, input.itemId, context.user.id);
+      if (!found) throw errors.NOT_FOUND();
+      const fieldIds = Object.keys(input.values);
+      if (fieldIds.length === 0) return attributeValuesOf(tx, found.id);
+
+      // Held until commit, so field.updateConfig can't change a type or narrow
+      // bounds between the validation below and the write (nor count values
+      // without these ones).
+      const rows = await tx.$queryRaw<(FieldRow & { levelId: string })[]>`
+        select id, name, position, config, "levelId" from field
+        where id in (${Prisma.join(fieldIds)}) for share`;
+      const byId = new Map(rows.map((row) => [row.id, row]));
+
+      const toWrite: [string, FieldValue][] = [];
+      const toClear: string[] = [];
+      for (const [fieldId, value] of Object.entries(input.values)) {
+        // Only Attributes at the Item's own Level; anything else, including
+        // other Collections' Fields, reads as unknown.
+        const row = byId.get(fieldId);
+        if (!row || row.levelId !== found.levelId) throw errors.INVALID_FIELD();
+        if (value === null) {
+          toClear.push(fieldId);
+          continue;
+        }
+        const result = validateFieldValue(toField(row), value);
+        if (!result.success) throw errors.INVALID_VALUE({ data: { fieldId, message: result.message } });
+        toWrite.push([fieldId, result.value]);
+      }
+
+      await tx.attributeValue.deleteMany({ where: { itemId: found.id, fieldId: { in: toClear } } });
+      for (const [fieldId, value] of toWrite) {
+        await tx.attributeValue.upsert({
+          where: { itemId_fieldId: { itemId: found.id, fieldId } },
+          create: { itemId: found.id, fieldId, levelId: found.levelId, value },
+          update: { value },
+        });
+      }
+      return attributeValuesOf(tx, found.id);
+    });
   }),
 
   deletePreview: authed.item.deletePreview.handler(async ({ input, context, errors }) => {

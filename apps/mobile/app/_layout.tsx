@@ -55,6 +55,9 @@ export default function RootLayout() {
             <Stack.Screen name="collections/[id]" options={{ title: "" }} />
             <Stack.Screen name="collections/levels/[id]" options={{ title: "Level settings" }} />
             <Stack.Screen name="collections/edit/[id]" options={{ title: "Edit Collection" }} />
+            <Stack.Screen name="fields/level/[id]" options={{ title: "Fields" }} />
+            <Stack.Screen name="fields/new" options={{ title: "New Attribute" }} />
+            <Stack.Screen name="fields/[id]" options={{ title: "Attribute" }} />
             <Stack.Screen name="items/[id]" options={{ title: "" }} />
             <Stack.Screen name="items/edit/[id]" options={{ title: "Edit Item" }} />
           </Stack.Protected>

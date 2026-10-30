@@ -3,8 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { type ComponentProps, Fragment } from "react";
 import { Pressable, View } from "react-native";
+import { ItemAttributes } from "@/components/attributes";
 import { AddItem, ItemList } from "@/components/items";
-import { Button, Card, ErrorText, Label, Loading, Screen, Text } from "@/components/ui";
+import { Button, Card, ErrorText, Label, Loading, Screen, Section, Text } from "@/components/ui";
 import { VerdictControl } from "@/components/verdict";
 import { orpc } from "@/lib/api";
 import { spacing } from "@/theme";
@@ -81,6 +82,11 @@ export default function ItemScreen() {
             <VerdictControl itemId={id} verdict={level.overallVerdict} overallRating={item.data.overallRating} />
           </Card>
         </View>
+      ) : null}
+      {level ? (
+        <Section title="Attributes">
+          <ItemAttributes itemId={id} levelId={levelId} values={item.data.attributes} />
+        </Section>
       ) : null}
       {childLevel ? <AddItem collectionId={collection.data.id} level={childLevel} parentId={id} /> : null}
     </>
