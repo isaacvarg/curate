@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { ChevronDown, ChevronUp, X } from "lucide-react-native";
 import { useState } from "react";
 import { View } from "react-native";
+import { FieldCondition } from "@/components/field-condition";
 import { FieldDelete } from "@/components/field-delete";
 import { Button, ErrorText, Hint, IconButton, Label, NumberInput, Section, SingleChoice, TextField } from "@/components/ui";
 import { api, orpc, queryClient } from "@/lib/api";
@@ -159,6 +160,8 @@ export function FieldEditor({ levelId, field }: { levelId: string; field?: Attri
           ) : null}
         </Section>
       ) : null}
+
+      {field ? <FieldCondition levelId={levelId} field={field} /> : null}
 
       <View style={{ gap: spacing.md }}>
         <ErrorText>{error}</ErrorText>
