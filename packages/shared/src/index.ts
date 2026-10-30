@@ -12,6 +12,22 @@ export {
 export type { BreadcrumbEntry, Item, ItemDeletePreview, ItemSummary } from "./api/item";
 export type { OverallRating } from "./api/rating";
 export {
+  type AttributeConfig,
+  type AttributeField,
+  attributeConfigSchema,
+  attributeFieldSchema,
+  type ChoiceOption,
+  type Field,
+  type FieldKind,
+  fieldSchema,
+  type FieldValue,
+  type FieldValueResult,
+  fieldValueSchema,
+  type RatingField,
+  ratingFieldSchema,
+  validateFieldValue,
+} from "./field";
+export {
   type NumericScale,
   type RatingScale,
   ratingScaleSchema,
