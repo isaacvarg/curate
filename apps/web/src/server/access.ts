@@ -23,3 +23,7 @@ export function findMemberLevel(db: Db, id: string, userId: string) {
 export function findMemberItem(db: Db, id: string, userId: string) {
   return db.item.findFirst({ where: { id, collection: memberOf(userId) }, select: { id: true, levelId: true } });
 }
+
+export function findMemberField(db: Db, id: string, userId: string) {
+  return db.field.findFirst({ where: { id, level: { collection: memberOf(userId) } } });
+}

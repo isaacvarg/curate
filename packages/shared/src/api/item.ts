@@ -1,6 +1,22 @@
 import { z } from "zod";
 import { overallRatingSchema } from "./rating";
 
+// The shape of any Attribute value; whether it fits its Field is checked with
+// the Field's own rules once the Field is known.
+export const attributeValueInputSchema = z.union([z.string(), z.number(), z.boolean(), z.array(z.string())]);
+
+// An Item's Attribute values by Field id. A Field with no value is absent.
+export const attributeValuesSchema = z.record(z.string(), attributeValueInputSchema);
+
+export type AttributeValues = z.infer<typeof attributeValuesSchema>;
+
+// Sets the listed Attributes of one Item at once: a value sets it, `null`
+// clears it, and Fields left out are untouched.
+export const itemSetAttributesInputSchema = z.object({
+  itemId: z.string(),
+  values: z.record(z.string(), attributeValueInputSchema.nullable()),
+});
+
 // Longer than `shortNameSchema`: Item names include titles like episode names.
 const itemNameSchema = z.string().trim().min(1, { message: "Enter a name." }).max(200);
 
@@ -60,6 +76,8 @@ export const itemSchema = itemSummarySchema.extend({
   // The Item's ancestors, top Level first; the Item itself isn't included.
   breadcrumb: z.array(breadcrumbEntrySchema),
   childCount: z.number().int(),
+  // The Item's own Attribute values, the same for every Collection Member.
+  attributes: attributeValuesSchema,
 });
 
 export type ItemSummary = z.infer<typeof itemSummarySchema>;

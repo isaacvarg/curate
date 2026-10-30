@@ -5,7 +5,7 @@ import { ratingScaleSchema, ratingValueSchema, type RatingValue } from "./rating
 // configuration. Attributes describe the Item; Rating fields are opinions on a
 // bounded Rating Scale. Phone and server validate through these same schemas.
 
-const nameSchema = z
+export const fieldNameSchema = z
   .string()
   .trim()
   .min(1, { message: "Name can't be blank." })
@@ -41,7 +41,7 @@ const optionsSchema = z
     message: "Options must be distinct.",
   });
 
-const numberConfigSchema = z
+export const numberConfigSchema = z
   .object({
     type: z.literal("number"),
     unit: unitSchema.optional(),
@@ -66,7 +66,7 @@ export type AttributeConfig = z.infer<typeof attributeConfigSchema>;
 
 const fieldBase = {
   id: z.string().min(1),
-  name: nameSchema,
+  name: fieldNameSchema,
   position: z.number().int().min(0),
   // Room for the optional condition (an expression tree) added next.
   condition: z.unknown().optional(),
