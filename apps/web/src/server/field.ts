@@ -74,7 +74,7 @@ async function listFields(db: Db, levelId: string) {
 }
 
 // A Level's Fields and Verdict, what its conditions are checked against.
-async function expressionLevelOf(db: Db, levelId: string): Promise<ExpressionLevel> {
+export async function expressionLevelOf(db: Db, levelId: string): Promise<ExpressionLevel> {
   const level = await db.level.findUniqueOrThrow({ where: { id: levelId } });
   return {
     fields: await listFields(db, levelId),

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { fieldSchema } from "../field";
 import { overallRatingSchema, overallVerdictSchema } from "./rating";
 
 // The shape of any Attribute value; whether it fits its Field is checked with
@@ -81,6 +82,9 @@ export const itemSchema = itemSummarySchema.extend({
   childCount: z.number().int(),
   // The Item's own Attribute values, the same for every Collection Member.
   attributes: attributeValuesSchema,
+  // The Level's fields that apply to this Item, in order: the ones whose
+  // conditions hold for its Attribute values. Values of the others stay stored.
+  fields: z.array(fieldSchema),
 });
 
 export type ItemSummary = z.infer<typeof itemSummarySchema>;

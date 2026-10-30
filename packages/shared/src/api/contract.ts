@@ -99,6 +99,15 @@ const ratingFieldErrors = {
   },
 } as const;
 
+// A write to a field the Item's Attribute values hide: it can't be entered
+// while it can't be seen.
+const fieldHidden = {
+  FIELD_HIDDEN: {
+    message: "That field is hidden for this Item.",
+    data: z.object({ fieldId: z.string() }),
+  },
+} as const;
+
 // A delete that would remove more than the one thing named needs the
 // caller's explicit confirmation; without it nothing is removed. The data
 // carries what would go, so the caller can show it before confirming.
@@ -292,6 +301,7 @@ export const contract = {
         ...itemNotFound,
         // A Field that isn't an Attribute at this Item's Level.
         INVALID_FIELD: { message: "That isn't an Attribute at this Item's Level." },
+        ...fieldHidden,
         INVALID_VALUE: {
           message: "That value doesn't fit this Attribute.",
           data: z.object({ fieldId: z.string(), message: z.string() }),
@@ -314,7 +324,7 @@ export const contract = {
     // per (Item, User). All or nothing. Returns the Overall Rating afterwards,
     // or null when clearing the last value left nothing.
     setOverall: authed
-      .errors({ ...itemNotFound, ...valueOutOfScale, ...ratingFieldErrors })
+      .errors({ ...itemNotFound, ...valueOutOfScale, ...ratingFieldErrors, ...fieldHidden })
       .input(ratingSetOverallInputSchema)
       .output(overallRatingSchema.nullable()),
     // Leaves the Item unrated by the caller: clears the Verdict and every
