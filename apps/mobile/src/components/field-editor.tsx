@@ -5,6 +5,7 @@ import { useRouter } from "expo-router";
 import { ChevronDown, ChevronUp, X } from "lucide-react-native";
 import { useState } from "react";
 import { View } from "react-native";
+import { FieldDelete } from "@/components/field-delete";
 import { Button, ErrorText, Hint, IconButton, Label, NumberInput, Section, SingleChoice, TextField } from "@/components/ui";
 import { api, orpc, queryClient } from "@/lib/api";
 import {
@@ -28,6 +29,8 @@ export function FieldEditor({ levelId, field }: { levelId: string; field?: Attri
   const [name, setName] = useState(field?.name ?? "");
   const [draft, setDraft] = useState<AttributeDraft>(() => toAttributeDraft(field?.config));
   const [problem, setProblem] = useState<string | null>(null);
+  // A saved option the user asked to delete, awaiting its preview and confirmation.
+  const [removing, setRemoving] = useState<{ id: string; label: string } | null>(null);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -134,15 +137,25 @@ export function FieldEditor({ levelId, field }: { levelId: string; field?: Attri
               <IconButton
                 icon={X}
                 label={`Remove option ${index + 1}`}
-                onPress={() => setOptions(draft.options.filter((_, i) => i !== index))}
+                onPress={() =>
+                  // A saved option may be in use: deleting it goes through the
+                  // preview. A new one is just dropped from the draft.
+                  field && option.id !== undefined
+                    ? setRemoving({ id: option.id, label: option.label })
+                    : setOptions(draft.options.filter((_, i) => i !== index))
+                }
               />
             </View>
           ))}
           <Button variant="secondary" title="Add option" onPress={() => setOptions([...draft.options, { label: "" }])} />
           {field ? (
             <Hint>
-              Renaming an option updates every Item that uses it. An option that Items use can't be removed here.
+              Renaming an option updates every Item that uses it. Removing a saved option shows how many Items use it
+              first, then clears it from them.
             </Hint>
+          ) : null}
+          {field && removing ? (
+            <FieldDelete key={removing.id} field={field} option={removing} onCancel={() => setRemoving(null)} />
           ) : null}
         </Section>
       ) : null}
@@ -158,6 +171,7 @@ export function FieldEditor({ levelId, field }: { levelId: string; field?: Attri
           }}
         />
       </View>
+      {field ? <FieldDelete field={field} /> : null}
     </>
   );
 }

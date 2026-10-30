@@ -4,6 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
+import { FieldDelete } from "@/components/field-delete";
 import { ScaleEditor } from "@/components/scale-editor";
 import { Button, ErrorText, Hint, Section, TextField } from "@/components/ui";
 import { api, orpc, queryClient } from "@/lib/api";
@@ -72,6 +73,7 @@ export function RatingFieldEditor({ levelId, field }: { levelId: string; field?:
           }}
         />
       </View>
+      {field ? <FieldDelete field={field} /> : null}
     </>
   );
 }
