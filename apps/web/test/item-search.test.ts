@@ -4,7 +4,7 @@ import {
   type ExpressionLevel,
   type Field,
   type RatingScale,
-  visibleFields,
+  visibleValues,
 } from "@repo/shared";
 import { describe, expect, it } from "vitest";
 import { prisma } from "@/server/db";
@@ -62,7 +62,9 @@ async function beerCollection() {
   };
   const hazy = await make("Hazy", a.id, { [abv.id]: 7.5, [brewed.id]: "2026-03-01", [style.id]: ale, [hops.id]: "Citra" });
   const stout = await make("Stout", a.id, { [abv.id]: 6, [brewed.id]: "2025-12-24", [style.id]: ale });
-  const pils = await make("Pils", b.id, { [abv.id]: 4.8, [style.id]: lager, [hops.id]: "Saaz" });
+  const pils = await make("Pils", b.id, { [abv.id]: 4.8, [style.id]: ale, [hops.id]: "Saaz" });
+  // Now a Lager, so its Hops value is stored but hidden.
+  await client.item.setAttributes({ itemId: pils.id, values: { [style.id]: lager } });
   const saison = await make("saison", b.id, { [abv.id]: 8.1, [brewed.id]: "2026-01-15", [style.id]: ale });
   const mystery = await make("Mystery", b.id, {});
 
@@ -109,12 +111,7 @@ async function evaluatorMatches(c: Beers, client: TestClient, filter: Expression
         ...(item.overallRating?.verdict != null ? { verdict: item.overallRating.verdict } : {}),
       };
       // Hidden fields' values are left out, as the model requires.
-      const shown = new Set(visibleFields(level, values).map((f) => f.id));
-      const visible = {
-        attributes: Object.fromEntries(Object.entries(values.attributes).filter(([id]) => shown.has(id))),
-        ratings: Object.fromEntries(Object.entries(values.ratings).filter(([id]) => shown.has(id))),
-        ...(values.verdict !== undefined ? { verdict: values.verdict } : {}),
-      };
+      const visible = visibleValues(level, values);
       if (evaluateExpression(filter, visible, level)) matches.push(item.name);
     }
   }

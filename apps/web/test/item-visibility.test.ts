@@ -106,6 +106,8 @@ describe("conditional fields on an Item", () => {
     await client.rating.setOverall({ itemId: item.id, fields: { [plot.id]: 5 } });
 
     await client.item.setAttributes({ itemId: item.id, values: { [genre.id]: nonFiction } });
+    // Hidden Rating field values read as absent; the stored value stays.
+    expect((await client.item.get({ id: item.id })).overallRating?.fields).toEqual({});
     await client.item.setAttributes({ itemId: item.id, values: { [genre.id]: fiction } });
 
     const got = await client.item.get({ id: item.id });

@@ -13,6 +13,7 @@ import {
   validateExpression,
   validateFieldValue,
   visibleFields,
+  visibleValues,
 } from "@repo/shared";
 import { Prisma } from "@/generated/prisma/client";
 import { findMemberCollection, findMemberItem, memberOf } from "./access";
@@ -126,12 +127,7 @@ async function searchItems(
       ...((own?.verdictLabel ?? own?.verdictNumber) != null ? { verdict: (own?.verdictLabel ?? own?.verdictNumber) as RatingValue } : {}),
     };
     // A value in a hidden field is as good as not entered.
-    const shown = new Set(visibleFields(level, values).map((f) => f.id));
-    const visible: ItemValues = {
-      ...values,
-      attributes: Object.fromEntries(Object.entries(values.attributes).filter(([id]) => shown.has(id))),
-      ratings: Object.fromEntries(Object.entries(values.ratings).filter(([id]) => shown.has(id))),
-    };
+    const visible = visibleValues(level, values);
     if (filter && !evaluateExpression(filter, visible, level)) continue;
 
     let key: SortKey;
@@ -261,13 +257,20 @@ export const item = {
         const { _count, overallRatings, ...item } = row;
         const attributes = await attributeValuesOf(tx, item.id);
         const level = await expressionLevelOf(tx, item.levelId);
+        const own = ownOverallRating(overallRatings);
+        // A hidden Rating field's value reads as absent, though it stays stored.
+        const fields = visibleFields(level, { attributes, ratings: own?.fields ?? {} });
+        const shown = new Set(fields.map((f) => f.id));
         return {
           ...item,
-          overallRating: ownOverallRating(overallRatings),
+          overallRating: own && {
+            ...own,
+            fields: Object.fromEntries(Object.entries(own.fields).filter(([id]) => shown.has(id))),
+          },
           breadcrumb: await breadcrumbOf(tx, item.parentId),
           childCount: _count.children,
           attributes,
-          fields: visibleFields(level, { attributes, ratings: {} }),
+          fields,
         };
       },
       { isolationLevel: "RepeatableRead" },
