@@ -86,7 +86,7 @@ Every screen that loads data shows four states.
 
 ## Forms
 
-- `<TextField label>` puts a small-caps label above the well. Without a label, the placeholder is also the screen reader label. Prefer a label for anything the user fills in more than once.
+- `<TextField label>` puts a small-caps label above the well. Without a label, the placeholder is also the screen reader label. Prefer a label for anything the user fills in more than once. `multiline` makes the well two touch targets tall, text from the top.
 - Fields set `autoComplete`, `textContentType` and `keyboardType` where they apply. `<NumberInput>` uses the decimal pad, tabular figures and an optional unit, and leaves parsing to the caller.
 - Errors sit directly above the button they block.
 
