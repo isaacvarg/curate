@@ -35,6 +35,8 @@ import {
   itemListInputSchema,
   itemRenameInputSchema,
   itemSchema,
+  itemSearchInputSchema,
+  itemSearchResultSchema,
   itemSetAttributesInputSchema,
   itemSummarySchema,
 } from "./item";
@@ -292,6 +294,21 @@ export const contract = {
       .errors({ NOT_FOUND: { message: "Collection or parent Item not found." } })
       .input(itemListInputSchema)
       .output(itemSummarySchema.array()),
+    // Items at one Level across the Collection, filtered and sorted, a page at
+    // a time. The filter and sort read only the caller's own opinions; a value
+    // in a hidden field counts as not set. Items with no value to sort by come
+    // last in either direction.
+    search: authed
+      .errors({
+        NOT_FOUND: { message: "Level not found." },
+        INVALID_FILTER: {
+          message: "That filter isn't valid for this Level.",
+          data: invalidConditionDataSchema,
+        },
+        INVALID_SORT: { message: "Items can only be sorted by name, Verdict, or a number or date Attribute here." },
+      })
+      .input(itemSearchInputSchema)
+      .output(itemSearchResultSchema),
     get: authed.errors(itemNotFound).input(itemGetInputSchema).output(itemSchema),
     rename: authed.errors(itemNotFound).input(itemRenameInputSchema).output(itemSummarySchema),
     // All or nothing: one invalid value leaves every value as it was. Returns

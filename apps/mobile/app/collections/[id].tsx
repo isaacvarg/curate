@@ -37,6 +37,16 @@ export default function CollectionScreen() {
       <Stack.Screen options={{ title: name }} />
       <View>
         <Hint>{levels.map((level) => level.name).join(" › ")}</Hint>
+        {levels.map((level) => (
+          <Button
+            key={level.id}
+            variant="text"
+            title={`Find ${level.name} Items`}
+            onPress={() =>
+              router.push({ pathname: "/browse/[id]", params: { id: level.id, collectionId: id } })
+            }
+          />
+        ))}
         <Button
           variant="text"
           title="Level settings"
