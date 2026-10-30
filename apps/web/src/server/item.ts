@@ -19,7 +19,7 @@ import { findMemberCollection, findMemberItem, memberOf } from "./access";
 import { prisma } from "./db";
 import { authed } from "./orpc";
 import { attributeValuesOf, expressionLevelOf, type FieldRow, toField } from "./field";
-import { lockCollection, overallVerdictScaleOf } from "./level";
+import { lockCollection, lockLevelForValueWrite, overallVerdictScaleOf } from "./level";
 import { ownOverallRating, ownOverallRatingSelect, ownOverallVerdict, ownOverallVerdictSelect } from "./rating";
 
 const itemSummarySelect = { id: true, name: true, levelId: true, parentId: true } as const;
@@ -291,6 +291,10 @@ export const item = {
       if (!found) throw errors.NOT_FOUND();
       const fieldIds = Object.keys(input.values);
       if (fieldIds.length === 0) return attributeValuesOf(tx, found.id);
+
+      // Held until commit, so field.setCondition can't change what is visible
+      // between the check below and the write.
+      await lockLevelForValueWrite(tx, found.levelId);
 
       // Held until commit, so field.updateConfig can't change a type or narrow
       // bounds between the validation below and the write (nor count values

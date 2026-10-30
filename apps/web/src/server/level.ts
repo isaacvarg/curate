@@ -51,6 +51,14 @@ export async function lockLevelVerdict(tx: Prisma.TransactionClient, levelId: st
   }
 }
 
+// For writers of an Item's values (Attributes and ratings): the share lock on
+// the Level row also conflicts with field.setCondition's Level lock, so
+// visibility is judged against conditions that can't change before commit.
+// Take it before any Field lock, as everywhere that reads conditions.
+export async function lockLevelForValueWrite(tx: Prisma.TransactionClient, levelId: string) {
+  await lockLevelVerdict(tx, levelId, "share");
+}
+
 export const level = {
   rename: authed.level.rename.handler(async ({ input, context, errors }) => {
     const found = await findMemberLevel(prisma, input.id, context.user.id);

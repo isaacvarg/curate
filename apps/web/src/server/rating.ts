@@ -3,7 +3,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { findMemberItem } from "./access";
 import { attributeValuesOf, expressionLevelOf } from "./field";
 import { prisma } from "./db";
-import { lockLevelVerdict, overallVerdictScaleOf } from "./level";
+import { lockLevelForValueWrite, overallVerdictScaleOf } from "./level";
 import { authed } from "./orpc";
 
 type Db = Prisma.TransactionClient;
@@ -78,13 +78,15 @@ export const rating = {
       const item = await findRateableItem(tx, input.itemId, context.user.id);
       if (!item) throw errors.NOT_FOUND();
 
+      // Held until commit, so level.updateVerdict can't change the scale
+      // between the check below and the write (or count ratings without this
+      // one), and field.setCondition can't change what is visible.
+      await lockLevelForValueWrite(tx, item.levelId);
+
       // The same value rules the phone uses. Everything is checked before
       // anything is written, so a bad value leaves the rating as it was.
       let verdict: ReturnType<typeof toStored> | undefined;
       if (input.verdict !== undefined) {
-        // Held until commit, so level.updateVerdict can't change the scale
-        // between this check and the write (or count ratings without this one).
-        await lockLevelVerdict(tx, item.levelId, "share");
         const level = await tx.level.findUniqueOrThrow({
           where: { id: item.levelId },
           select: { overallVerdictScale: true },
