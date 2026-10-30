@@ -17,6 +17,7 @@ import {
   fieldReorderInputSchema,
   fieldSchema,
   fieldUpdateConfigInputSchema,
+  fieldUpdateScaleInputSchema,
 } from "./field";
 import {
   attributeValuesSchema,
@@ -73,6 +74,22 @@ const fieldNotFound = { NOT_FOUND: { message: "Field not found." } } as const;
 // An option id in a Field's configuration that isn't one of that Field's own.
 const invalidOptions = {
   INVALID_OPTIONS: { message: "An option id doesn't belong to this Attribute." },
+} as const;
+
+// Updating a Field with the wrong Field Kind's configuration: a scale for an
+// Attribute, or a type configuration for a Rating field.
+const wrongKind = {
+  WRONG_KIND: { message: "That Field is a different kind than this change is for." },
+} as const;
+
+// A Rating field in the Overall Rating that isn't one at the Item's Level, or a
+// value that isn't on its scale.
+const ratingFieldErrors = {
+  INVALID_FIELD: { message: "That isn't a Rating field at this Item's Level." },
+  INVALID_VALUE: {
+    message: "That value isn't on this Rating field's scale.",
+    data: z.object({ fieldId: z.string(), message: z.string() }),
+  },
 } as const;
 
 // A delete that would remove more than the one thing named needs the
@@ -147,8 +164,9 @@ export const contract = {
       .output(levelSchema),
   },
   field: {
-    // Adds an Attribute after the Level's last Field. Option ids are minted by
-    // the server.
+    // Adds an Attribute (with its type `config`) or a Rating field (with its
+    // `scale`) after the Level's last Field. Option ids are minted by the
+    // server.
     create: authed.errors({ ...levelNotFound, ...invalidOptions }).input(fieldCreateInputSchema).output(fieldSchema),
     rename: authed.errors(fieldNotFound).input(fieldRenameInputSchema).output(fieldSchema),
     // `ids` must list every Field at the Level exactly once.
@@ -159,7 +177,7 @@ export const contract = {
       })
       .input(fieldReorderInputSchema)
       .output(fieldSchema.array()),
-    // Replaces the type configuration. Changing the type is refused once any
+    // Replaces an Attribute's type configuration. Changing the type is refused once any
     // Item has a value; within a type, the new unit, bounds and options must
     // still allow every stored value, and options values use can't be dropped
     // here.
@@ -175,8 +193,22 @@ export const contract = {
           data: z.object({ conflictCount: z.number().int() }),
         },
         ...invalidOptions,
+        ...wrongKind,
       })
       .input(fieldUpdateConfigInputSchema)
+      .output(fieldSchema),
+    // Replaces a Rating field's scale. Refused once anyone has a value for it,
+    // so stored values are never reinterpreted on a different scale.
+    updateScale: authed
+      .errors({
+        ...fieldNotFound,
+        SCALE_LOCKED: {
+          message: "This scale is locked because Items already have values for this Rating field.",
+          data: z.object({ valueCount: z.number().int() }),
+        },
+        ...wrongKind,
+      })
+      .input(fieldUpdateScaleInputSchema)
       .output(fieldSchema),
     // The Level's Fields in order.
     list: authed.errors(levelNotFound).input(fieldListInputSchema).output(fieldSchema.array()),
@@ -218,13 +250,16 @@ export const contract = {
       .output(z.void()),
   },
   rating: {
-    // Creates or replaces the caller's Overall Rating of the Item; there's
-    // never more than one per (Item, User).
+    // Sets the Verdict and/or Rating field values of the caller's Overall
+    // Rating of the Item, creating it if need be; there's never more than one
+    // per (Item, User). All or nothing. Returns the Overall Rating afterwards,
+    // or null when clearing the last value left nothing.
     setOverall: authed
-      .errors({ ...itemNotFound, ...valueOutOfScale })
+      .errors({ ...itemNotFound, ...valueOutOfScale, ...ratingFieldErrors })
       .input(ratingSetOverallInputSchema)
-      .output(overallRatingSchema),
-    // Leaves the Item unrated by the caller. Clearing an unrated Item succeeds.
+      .output(overallRatingSchema.nullable()),
+    // Leaves the Item unrated by the caller: clears the Verdict and every
+    // Rating field value. Clearing an unrated Item succeeds.
     clearOverall: authed.errors(itemNotFound).input(ratingClearOverallInputSchema).output(z.void()),
   },
 };

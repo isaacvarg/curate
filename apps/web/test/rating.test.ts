@@ -29,7 +29,7 @@ describe("rating.setOverall", () => {
   it("returns the Overall Rating it set", async () => {
     const { client, item } = await beerCollection();
 
-    expect(await client.rating.setOverall({ itemId: item.id, verdict: 5 })).toEqual({ verdict: 5 });
+    expect(await client.rating.setOverall({ itemId: item.id, verdict: 5 })).toEqual({ verdict: 5, fields: {} });
   });
 
   it("replaces the caller's Overall Rating when set again", async () => {
@@ -86,12 +86,12 @@ describe("rating.setOverall", () => {
   it("stores a value within rounding error of a step as exactly that step", async () => {
     const { client, level, item } = await beerCollection();
 
-    expect(await client.rating.setOverall({ itemId: item.id, verdict: 4.0000000001 })).toEqual({ verdict: 4 });
+    expect(await client.rating.setOverall({ itemId: item.id, verdict: 4.0000000001 })).toEqual({ verdict: 4, fields: {} });
     expect(await client.item.get({ id: item.id })).toMatchObject({ overallRating: { verdict: 4 } });
 
     await client.rating.clearOverall({ itemId: item.id });
     await setOverallVerdictScale(client, level.id, { kind: "numeric", min: 0, max: 10, step: 0.1 });
-    expect(await client.rating.setOverall({ itemId: item.id, verdict: 0.1 + 0.2 })).toEqual({ verdict: 0.3 });
+    expect(await client.rating.setOverall({ itemId: item.id, verdict: 0.1 + 0.2 })).toEqual({ verdict: 0.3, fields: {} });
   });
 
   it("stores the raw value on the scale, not its 0–1 form", async () => {

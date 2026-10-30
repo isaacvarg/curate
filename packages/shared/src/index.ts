@@ -9,9 +9,14 @@ export {
   defaultLevelName,
   type Level,
 } from "./api/collection";
-export { type AttributeConfigInput, attributeConfigInputSchema, type ChoiceOptionInput } from "./api/field";
+export {
+  type AttributeConfigInput,
+  attributeConfigInputSchema,
+  type ChoiceOptionInput,
+  type FieldCreateInput,
+} from "./api/field";
 export type { AttributeValues, BreadcrumbEntry, Item, ItemDeletePreview, ItemSummary } from "./api/item";
-export type { OverallRating } from "./api/rating";
+export type { OverallRating, OverallVerdict, RatingFieldValues } from "./api/rating";
 export {
   type AttributeConfig,
   type AttributeField,

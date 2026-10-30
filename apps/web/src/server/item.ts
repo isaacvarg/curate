@@ -5,18 +5,18 @@ import { prisma } from "./db";
 import { authed } from "./orpc";
 import { attributeValuesOf, type FieldRow, toField } from "./field";
 import { lockCollection } from "./level";
-import { ownOverallRating, ownOverallRatingSelect } from "./rating";
+import { ownOverallRating, ownOverallRatingSelect, ownOverallVerdict, ownOverallVerdictSelect } from "./rating";
 
 const itemSummarySelect = { id: true, name: true, levelId: true, parentId: true } as const;
 
-// An Item summary with the caller's own Overall Rating.
+// An Item summary with the caller's own Verdict.
 function itemSummaryFor(userId: string) {
-  return { ...itemSummarySelect, ...ownOverallRatingSelect(userId) } as const;
+  return { ...itemSummarySelect, ...ownOverallVerdictSelect(userId) } as const;
 }
 
-function withOverallRating<T extends { overallRatings: Parameters<typeof ownOverallRating>[0] }>(row: T) {
+function withOverallVerdict<T extends { overallRatings: Parameters<typeof ownOverallVerdict>[0] }>(row: T) {
   const { overallRatings, ...rest } = row;
-  return { ...rest, overallRating: ownOverallRating(overallRatings) };
+  return { ...rest, overallRating: ownOverallVerdict(overallRatings) };
 }
 
 // Sort key first (creation order by default); id breaks ties for keys set
@@ -100,7 +100,7 @@ export const item = {
       select: itemSummaryFor(context.user.id),
       orderBy: itemOrder,
     });
-    return rows.map(withOverallRating);
+    return rows.map(withOverallVerdict);
   }),
 
   get: authed.item.get.handler(async ({ input, context, errors }) => {
@@ -110,12 +110,18 @@ export const item = {
       async (tx) => {
         const row = await tx.item.findFirst({
           where: { id: input.id, collection: memberOf(context.user.id) },
-          select: { ...itemSummaryFor(context.user.id), collectionId: true, _count: { select: { children: true } } },
+          select: {
+            ...itemSummarySelect,
+            ...ownOverallRatingSelect(context.user.id),
+            collectionId: true,
+            _count: { select: { children: true } },
+          },
         });
         if (!row) throw errors.NOT_FOUND();
-        const { _count, ...item } = withOverallRating(row);
+        const { _count, overallRatings, ...item } = row;
         return {
           ...item,
+          overallRating: ownOverallRating(overallRatings),
           breadcrumb: await breadcrumbOf(tx, item.parentId),
           childCount: _count.children,
           attributes: await attributeValuesOf(tx, item.id),
@@ -133,7 +139,7 @@ export const item = {
       data: { name: input.name },
       select: itemSummaryFor(context.user.id),
     });
-    return withOverallRating(row);
+    return withOverallVerdict(row);
   }),
 
   setAttributes: authed.item.setAttributes.handler(async ({ input, context, errors }) => {
@@ -147,7 +153,7 @@ export const item = {
       // bounds between the validation below and the write (nor count values
       // without these ones).
       const rows = await tx.$queryRaw<(FieldRow & { levelId: string })[]>`
-        select id, name, position, config, "levelId" from field
+        select id, kind, name, position, config, "levelId" from field
         where id in (${Prisma.join(fieldIds)}) for share`;
       const byId = new Map(rows.map((row) => [row.id, row]));
 
@@ -157,7 +163,7 @@ export const item = {
         // Only Attributes at the Item's own Level; anything else, including
         // other Collections' Fields, reads as unknown.
         const row = byId.get(fieldId);
-        if (!row || row.levelId !== found.levelId) throw errors.INVALID_FIELD();
+        if (!row || row.kind !== "attribute" || row.levelId !== found.levelId) throw errors.INVALID_FIELD();
         if (value === null) {
           toClear.push(fieldId);
           continue;

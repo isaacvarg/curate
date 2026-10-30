@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { overallRatingSchema } from "./rating";
+import { overallRatingSchema, overallVerdictSchema } from "./rating";
 
 // The shape of any Attribute value; whether it fits its Field is checked with
 // the Field's own rules once the Field is known.
@@ -55,14 +55,15 @@ export const itemDeleteInputSchema = z.object({
 
 export type ItemDeletePreview = z.infer<typeof itemDeletePreviewSchema>;
 
-// An Item as it appears in lists, with the caller's own Overall Rating (null
-// when they haven't rated it). Other Users' ratings are never included.
+// An Item as it appears in lists, with the caller's own Verdict (null when
+// they haven't rated it; a null `verdict` inside means only Rating fields are
+// set). Other Users' ratings are never included.
 export const itemSummarySchema = z.object({
   id: z.string(),
   name: z.string(),
   levelId: z.string(),
   parentId: z.string().nullable(),
-  overallRating: overallRatingSchema.nullable(),
+  overallRating: overallVerdictSchema.nullable(),
 });
 
 export const breadcrumbEntrySchema = z.object({
@@ -72,6 +73,8 @@ export const breadcrumbEntrySchema = z.object({
 });
 
 export const itemSchema = itemSummarySchema.extend({
+  // The caller's whole Overall Rating, with its Rating field values.
+  overallRating: overallRatingSchema.nullable(),
   collectionId: z.string(),
   // The Item's ancestors, top Level first; the Item itself isn't included.
   breadcrumb: z.array(breadcrumbEntrySchema),

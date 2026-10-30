@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { fieldNameSchema, fieldSchema, numberConfigSchema } from "../field";
+import { ratingScaleSchema } from "../rating-scale";
 
 // An option as the caller sends it: a new one has no id yet and the server
 // mints one; an existing one keeps its id, which is what values refer to, so
@@ -36,11 +37,14 @@ export const attributeConfigInputSchema = z.discriminatedUnion("type", [
 
 export type AttributeConfigInput = z.infer<typeof attributeConfigInputSchema>;
 
-export const fieldCreateInputSchema = z.object({
-  levelId: z.string(),
-  name: fieldNameSchema,
-  config: attributeConfigInputSchema,
-});
+// An Attribute is created with its type configuration, a Rating field with its
+// Rating Scale.
+export const fieldCreateInputSchema = z.union([
+  z.object({ levelId: z.string(), name: fieldNameSchema, config: attributeConfigInputSchema }),
+  z.object({ levelId: z.string(), name: fieldNameSchema, scale: ratingScaleSchema }),
+]);
+
+export type FieldCreateInput = z.infer<typeof fieldCreateInputSchema>;
 
 export const fieldRenameInputSchema = z.object({ id: z.string(), name: fieldNameSchema });
 
@@ -51,6 +55,8 @@ export const fieldReorderInputSchema = z.object({
 });
 
 export const fieldUpdateConfigInputSchema = z.object({ id: z.string(), config: attributeConfigInputSchema });
+
+export const fieldUpdateScaleInputSchema = z.object({ id: z.string(), scale: ratingScaleSchema });
 
 export const fieldListInputSchema = z.object({ levelId: z.string() });
 
