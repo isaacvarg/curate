@@ -28,6 +28,23 @@ export {
   validateFieldValue,
 } from "./field";
 export {
+  type CompareOperator,
+  evaluateExpression,
+  EXPRESSION_FORMAT_VERSION,
+  type Expression,
+  type ExpressionIssue,
+  type ExpressionLevel,
+  type ExpressionNode,
+  type ExpressionProfile,
+  expressionSchema,
+  type ExpressionValidation,
+  type ItemValues,
+  type Literal,
+  type Reference,
+  validateExpression,
+  type ValueKind,
+} from "./expression";
+export {
   type NumericScale,
   type RatingScale,
   ratingScaleSchema,
