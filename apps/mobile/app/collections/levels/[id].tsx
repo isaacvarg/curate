@@ -1,7 +1,7 @@
 import { isDefinedError } from "@orpc/client";
-import { defaultVerdict, type Level, sameRatingScale } from "@repo/shared";
+import { type Level, sameRatingScale } from "@repo/shared";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { View } from "react-native";
 import {
@@ -11,14 +11,12 @@ import {
   Hint,
   Label,
   Loading,
-  NumberInput,
   Screen,
-  SegmentedControl,
   Section,
-  SingleChoice,
   Text,
   TextField,
 } from "@/components/ui";
+import { ScaleEditor } from "@/components/scale-editor";
 import { orpc, queryClient } from "@/lib/api";
 import { errorMessage } from "@/lib/errors";
 import {
@@ -26,7 +24,6 @@ import {
   parseScaleDraft,
   type ScaleDraft,
   scaleLockedMessage,
-  scalePresets,
   toScaleDraft,
 } from "@/lib/verdict-settings";
 import { spacing } from "@/theme";
@@ -64,7 +61,7 @@ export default function LevelSettings() {
       <Hint>Top Level first. Only the deepest Level can be removed, and only while it has no Items.</Hint>
       {levels.map((level) => (
         // Keyed by name and Verdict too, so the fields reset after a save lands.
-        <LevelRow key={levelRowKey(level)} level={level} />
+        <LevelRow key={levelRowKey(level)} level={level} collectionId={id} />
       ))}
       {deepest && levels.length > 1 ? <RemoveDeepest collectionId={id} level={deepest} /> : null}
       <AppendDeepest collectionId={id} />
@@ -82,7 +79,8 @@ function invalidateCollection() {
   return queryClient.invalidateQueries({ queryKey: orpc.collection.key() });
 }
 
-function LevelRow({ level }: { level: Level }) {
+function LevelRow({ level, collectionId }: { level: Level; collectionId: string }) {
+  const router = useRouter();
   const [name, setName] = useState(level.name);
   const rename = useMutation(orpc.level.rename.mutationOptions({ onSuccess: invalidateCollection }));
   const changed = name.trim() !== level.name;
@@ -108,6 +106,14 @@ function LevelRow({ level }: { level: Level }) {
         {rename.error ? errorMessage(rename.error, { fallback: "Couldn't rename it.", badRequest: levelNameMissing }) : null}
       </ErrorText>
       <VerdictSettings level={level} />
+      <Button
+        variant="secondary"
+        title="Fields"
+        accessibilityLabel={`Fields for ${level.name}`}
+        onPress={() =>
+          router.push({ pathname: "/fields/level/[id]", params: { id: level.id, collectionId } })
+        }
+      />
     </Card>
   );
 }
@@ -153,14 +159,6 @@ function VerdictSettings({ level }: { level: Level }) {
     }
   }
 
-  const switchKind = (kind: ScaleDraft["kind"]) => {
-    if (kind === draft.kind) return;
-    setDraft(kind === "numeric" ? toScaleDraft(defaultVerdict.scale) : { kind: "labels", labels: "" });
-  };
-
-  const selectedPreset =
-    scalePresets.find((preset) => "scale" in parsed && sameRatingScale(parsed.scale, preset.scale))?.title ?? null;
-
   return (
     <View style={{ gap: spacing.md, paddingTop: spacing.sm }}>
       <Text variant="ui-strong">
@@ -168,49 +166,7 @@ function VerdictSettings({ level }: { level: Level }) {
       </Text>
       <TextField placeholder="Verdict name, e.g. Score" value={name} onChangeText={setName} />
 
-      <SingleChoice
-        label={`Scale presets for ${saved.name}`}
-        options={scalePresets.map((preset) => ({ value: preset.title, label: preset.title }))}
-        value={selectedPreset}
-        onChange={(title) => {
-          const preset = scalePresets.find((p) => p.title === title);
-          if (preset) setDraft(toScaleDraft(preset.scale));
-        }}
-      />
-
-      <SegmentedControl
-        label={`Scale kind for ${saved.name}`}
-        options={[
-          { value: "numeric" as const, label: "Numbers" },
-          { value: "labels" as const, label: "Labels" },
-        ]}
-        value={draft.kind}
-        onChange={switchKind}
-      />
-
-      {draft.kind === "numeric" ? (
-        <View style={{ flexDirection: "row", gap: spacing.md }}>
-          {(["min", "max", "step"] as const).map((field) => (
-            <View key={field} style={{ flex: 1 }}>
-              <NumberInput
-                label={numberFieldTitles[field]}
-                accessibilityLabel={`${numberFieldTitles[field]} for ${saved.name}`}
-                value={draft[field]}
-                onChangeText={(text) => setDraft({ ...draft, [field]: text })}
-              />
-            </View>
-          ))}
-        </View>
-      ) : (
-        <TextField
-          multiline
-          placeholder={"One label per line, worst first\nThumbs down\nMeh\nThumbs up"}
-          accessibilityLabel={`Labels for ${saved.name}, one per line, worst first`}
-          value={draft.labels}
-          onChangeText={(labels) => setDraft({ kind: "labels", labels })}
-          style={{ minHeight: labelsFieldHeight, textAlignVertical: "top" }}
-        />
-      )}
+      <ScaleEditor name={saved.name} draft={draft} onChange={setDraft} />
 
       <ErrorText>{scaleError ?? error}</ErrorText>
       {nameChanged || scaleChanged ? (
@@ -219,10 +175,6 @@ function VerdictSettings({ level }: { level: Level }) {
     </View>
   );
 }
-
-const labelsFieldHeight = 112; // room for about four labels before it scrolls
-
-const numberFieldTitles = { min: "Minimum", max: "Maximum", step: "Step" } as const;
 
 function sameDraft(a: ScaleDraft, b: ScaleDraft): boolean {
   return JSON.stringify(a) === JSON.stringify(b);

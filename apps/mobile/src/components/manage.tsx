@@ -39,6 +39,7 @@ export function ConfirmDelete({
   description,
   deleting,
   error,
+  blocked,
   onConfirm,
 }: {
   title: string;
@@ -48,6 +49,8 @@ export function ConfirmDelete({
   description: string | null;
   deleting: boolean;
   error: string | null;
+  // The preview says the delete can't go ahead; only Cancel is left.
+  blocked?: boolean;
   onConfirm: () => void;
 }) {
   if (!open) {
@@ -70,7 +73,7 @@ export function ConfirmDelete({
           <Button
             title={deleting ? "Deleting…" : "Delete for good"}
             onPress={onConfirm}
-            disabled={description === null || deleting}
+            disabled={description === null || deleting || blocked}
           />
           <Button variant="text" title="Cancel" onPress={onCancel} disabled={deleting} style={{ alignSelf: "center" }} />
         </View>

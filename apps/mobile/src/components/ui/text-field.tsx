@@ -8,7 +8,8 @@ type FieldProps = ComponentProps<typeof TextInput> & {
   label?: string;
 };
 
-// A text field: a sunk well (DESIGN.md Elevation & Depth) with an ink focus ring.
+// A text field: a sunk well (DESIGN.md Elevation & Depth) with an ink focus ring. A multiline field
+// is two touch targets tall, with its text starting at the top.
 export function TextField({ label, style, accessibilityLabel, onFocus, onBlur, ...props }: FieldProps) {
   const { colors } = useTheme();
   const [focused, setFocused] = useState(false);
@@ -36,7 +37,8 @@ export function TextField({ label, style, accessibilityLabel, onFocus, onBlur, .
           borderCurve: "continuous",
           borderWidth: 1,
           borderColor: focused ? colors.primary : colors.sunk,
-          minHeight: spacing["touch-target"],
+          minHeight: props.multiline ? spacing["touch-target"] * 2 : spacing["touch-target"],
+          ...(props.multiline ? { textAlignVertical: "top" } : {}),
           paddingHorizontal: spacing.md,
           paddingVertical: spacing.sm,
         },

@@ -1,21 +1,38 @@
-import type { BreadcrumbEntry, ItemDeletePreview } from "@repo/shared";
-import type { Prisma } from "@/generated/prisma/client";
+import {
+  type BreadcrumbEntry,
+  evaluateExpression,
+  type ExpressionLevel,
+  type Field,
+  type FieldValue,
+  type ItemDeletePreview,
+  type ItemSearchSort,
+  type ItemSummary,
+  type ItemValues,
+  type RatingValue,
+  toUnitInterval,
+  validateExpression,
+  validateFieldValue,
+  visibleFields,
+  visibleValues,
+} from "@repo/shared";
+import { Prisma } from "@/generated/prisma/client";
 import { findMemberCollection, findMemberItem, memberOf } from "./access";
 import { prisma } from "./db";
 import { authed } from "./orpc";
-import { lockCollection } from "./level";
-import { ownOverallRating, ownOverallRatingSelect } from "./rating";
+import { attributeValuesOf, expressionLevelOf, type FieldRow, toField } from "./field";
+import { lockCollection, lockLevelForValueWrite, overallVerdictScaleOf } from "./level";
+import { ownOverallRating, ownOverallRatingSelect, ownOverallVerdict, ownOverallVerdictSelect } from "./rating";
 
 const itemSummarySelect = { id: true, name: true, levelId: true, parentId: true } as const;
 
-// An Item summary with the caller's own Overall Rating.
+// An Item summary with the caller's own Verdict.
 function itemSummaryFor(userId: string) {
-  return { ...itemSummarySelect, ...ownOverallRatingSelect(userId) } as const;
+  return { ...itemSummarySelect, ...ownOverallVerdictSelect(userId) } as const;
 }
 
-function withOverallRating<T extends { overallRatings: Parameters<typeof ownOverallRating>[0] }>(row: T) {
+function withOverallVerdict<T extends { overallRatings: Parameters<typeof ownOverallVerdict>[0] }>(row: T) {
   const { overallRatings, ...rest } = row;
-  return { ...rest, overallRating: ownOverallRating(overallRatings) };
+  return { ...rest, overallRating: ownOverallVerdict(overallRatings) };
 }
 
 // Sort key first (creation order by default); id breaks ties for keys set
@@ -39,7 +56,127 @@ async function breadcrumbOf(db: Prisma.TransactionClient, parentId: string | nul
   return breadcrumb;
 }
 
+// What sorting compares: a number, or a string (names, dates). Absent when the
+// Item has no value to sort by.
+type SortKey = number | string | undefined;
+
+function compareKeys(a: NonNullable<SortKey>, b: NonNullable<SortKey>): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+type SearchErrors = Parameters<Parameters<typeof authed.item.search.handler>[0]>[0]["errors"];
+
+// Every search is computed from the same values the shared evaluator reads
+// (ADR 0002), so a filter can never disagree with a client that evaluates it:
+// load the Level's Items with their Attributes and the caller's own Rating
+// values, hide the values of hidden fields, evaluate, sort, then page.
+async function searchItems(
+  db: Prisma.TransactionClient,
+  input: { collectionId: string; levelId: string; filter?: unknown; sort?: ItemSearchSort; limit: number; offset: number },
+  userId: string,
+  errors: SearchErrors,
+) {
+  const levelRow = await db.level.findFirst({
+    where: { id: input.levelId, collectionId: input.collectionId, collection: memberOf(userId) },
+  });
+  if (!levelRow) throw errors.NOT_FOUND();
+  const verdictScale = overallVerdictScaleOf(levelRow);
+  const level: ExpressionLevel = {
+    fields: await listLevelFields(db, levelRow.id),
+    verdict: { name: levelRow.overallVerdictName, scale: verdictScale },
+  };
+
+  let filter: Parameters<typeof evaluateExpression>[0] | undefined;
+  if (input.filter !== undefined && input.filter !== null) {
+    const checked = validateExpression(input.filter, level, "filter");
+    if (!checked.success) throw errors.INVALID_FILTER({ data: { issues: checked.issues } });
+    filter = checked.expression;
+  }
+
+  const sort = input.sort;
+  let sortField: Field | undefined;
+  if (sort?.by === "attribute") {
+    sortField = level.fields.find((f) => f.id === sort.fieldId && f.kind === "attribute");
+    const type = sortField?.kind === "attribute" ? sortField.config.type : undefined;
+    if (type !== "number" && type !== "date") throw errors.INVALID_SORT();
+  }
+
+  const rows = await db.item.findMany({
+    where: { collectionId: input.collectionId, levelId: levelRow.id },
+    select: {
+      ...itemSummaryFor(userId),
+      attributeValues: { select: { fieldId: true, value: true } },
+      overallRatings: {
+        where: { userId },
+        select: {
+          verdictNumber: true,
+          verdictLabel: true,
+          values: { select: { fieldId: true, valueNumber: true, valueLabel: true } },
+        },
+      },
+    },
+    orderBy: itemOrder,
+  });
+
+  const matches: { summary: ItemSummary; key: SortKey }[] = [];
+  for (const row of rows) {
+    const [own] = row.overallRatings;
+    const values: ItemValues = {
+      attributes: Object.fromEntries(row.attributeValues.map((v) => [v.fieldId, v.value as FieldValue])),
+      ratings: Object.fromEntries((own?.values ?? []).map((v) => [v.fieldId, (v.valueLabel ?? v.valueNumber) as RatingValue])),
+      ...((own?.verdictLabel ?? own?.verdictNumber) != null ? { verdict: (own?.verdictLabel ?? own?.verdictNumber) as RatingValue } : {}),
+    };
+    // A value in a hidden field is as good as not entered.
+    const visible = visibleValues(level, values);
+    if (filter && !evaluateExpression(filter, visible, level)) continue;
+
+    let key: SortKey;
+    if (sort?.by === "name") key = row.name.toLowerCase();
+    else if (sort?.by === "verdict") key = visible.verdict === undefined ? undefined : toUnitInterval(verdictScale, visible.verdict);
+    else if (sortField) {
+      const value = visible.attributes[sortField.id];
+      key = typeof value === "number" || typeof value === "string" ? value : undefined;
+    }
+    matches.push({
+      summary: {
+        id: row.id,
+        name: row.name,
+        levelId: row.levelId,
+        parentId: row.parentId,
+        overallRating: ownOverallVerdict(row.overallRatings),
+      },
+      key,
+    });
+  }
+
+  if (sort) {
+    const sign = sort.direction === "desc" ? -1 : 1;
+    // Stable, so ties keep creation order. Absent values go last either way.
+    matches.sort((a, b) => {
+      if (a.key === undefined || b.key === undefined) return a.key === b.key ? 0 : a.key === undefined ? 1 : -1;
+      return sign * compareKeys(a.key, b.key);
+    });
+  }
+
+  return {
+    items: matches.slice(input.offset, input.offset + input.limit).map((m) => m.summary),
+    total: matches.length,
+  };
+}
+
+async function listLevelFields(db: Prisma.TransactionClient, levelId: string): Promise<Field[]> {
+  const rows = await db.field.findMany({ where: { levelId }, orderBy: { position: "asc" } });
+  return rows.map(toField);
+}
+
 export const item = {
+  search: authed.item.search.handler(async ({ input, context, errors }) => {
+    // One snapshot, so the values and the Level's Fields agree.
+    return prisma.$transaction((tx) => searchItems(tx, input, context.user.id, errors), {
+      isolationLevel: "RepeatableRead",
+    });
+  }),
+
   create: authed.item.create.handler(async ({ input, context, errors }) => {
     return prisma.$transaction(async (tx) => {
       // The Collection lock keeps level.removeDeepest from removing the Level
@@ -99,7 +236,7 @@ export const item = {
       select: itemSummaryFor(context.user.id),
       orderBy: itemOrder,
     });
-    return rows.map(withOverallRating);
+    return rows.map(withOverallVerdict);
   }),
 
   get: authed.item.get.handler(async ({ input, context, errors }) => {
@@ -109,11 +246,32 @@ export const item = {
       async (tx) => {
         const row = await tx.item.findFirst({
           where: { id: input.id, collection: memberOf(context.user.id) },
-          select: { ...itemSummaryFor(context.user.id), collectionId: true, _count: { select: { children: true } } },
+          select: {
+            ...itemSummarySelect,
+            ...ownOverallRatingSelect(context.user.id),
+            collectionId: true,
+            _count: { select: { children: true } },
+          },
         });
         if (!row) throw errors.NOT_FOUND();
-        const { _count, ...item } = withOverallRating(row);
-        return { ...item, breadcrumb: await breadcrumbOf(tx, item.parentId), childCount: _count.children };
+        const { _count, overallRatings, ...item } = row;
+        const attributes = await attributeValuesOf(tx, item.id);
+        const level = await expressionLevelOf(tx, item.levelId);
+        const own = ownOverallRating(overallRatings);
+        // A hidden Rating field's value reads as absent, though it stays stored.
+        const fields = visibleFields(level, { attributes, ratings: own?.fields ?? {} });
+        const shown = new Set(fields.map((f) => f.id));
+        return {
+          ...item,
+          overallRating: own && {
+            ...own,
+            fields: Object.fromEntries(Object.entries(own.fields).filter(([id]) => shown.has(id))),
+          },
+          breadcrumb: await breadcrumbOf(tx, item.parentId),
+          childCount: _count.children,
+          attributes,
+          fields,
+        };
       },
       { isolationLevel: "RepeatableRead" },
     );
@@ -127,7 +285,64 @@ export const item = {
       data: { name: input.name },
       select: itemSummaryFor(context.user.id),
     });
-    return withOverallRating(row);
+    return withOverallVerdict(row);
+  }),
+
+  setAttributes: authed.item.setAttributes.handler(async ({ input, context, errors }) => {
+    return prisma.$transaction(async (tx) => {
+      const found = await findMemberItem(tx, input.itemId, context.user.id);
+      if (!found) throw errors.NOT_FOUND();
+      const fieldIds = Object.keys(input.values);
+      if (fieldIds.length === 0) return attributeValuesOf(tx, found.id);
+
+      // Held until commit, so field.setCondition can't change what is visible
+      // between the check below and the write.
+      await lockLevelForValueWrite(tx, found.levelId);
+
+      // Held until commit, so field.updateConfig can't change a type or narrow
+      // bounds between the validation below and the write (nor count values
+      // without these ones).
+      const rows = await tx.$queryRaw<(FieldRow & { levelId: string })[]>`
+        select id, kind, name, position, config, "levelId" from field
+        where id in (${Prisma.join(fieldIds)}) for share`;
+      const byId = new Map(rows.map((row) => [row.id, row]));
+
+      const toWrite: [string, FieldValue][] = [];
+      const toClear: string[] = [];
+      for (const [fieldId, value] of Object.entries(input.values)) {
+        // Only Attributes at the Item's own Level; anything else, including
+        // other Collections' Fields, reads as unknown.
+        const row = byId.get(fieldId);
+        if (!row || row.kind !== "attribute" || row.levelId !== found.levelId) throw errors.INVALID_FIELD();
+        if (value === null) {
+          toClear.push(fieldId);
+          continue;
+        }
+        const result = validateFieldValue(toField(row), value);
+        if (!result.success) throw errors.INVALID_VALUE({ data: { fieldId, message: result.message } });
+        toWrite.push([fieldId, result.value]);
+      }
+
+      // Judged by the Attributes as they will be after this save, so a save
+      // that reveals a field may fill it. Clearing a hidden value is allowed.
+      const after: Record<string, FieldValue> = { ...(await attributeValuesOf(tx, found.id)) };
+      for (const fieldId of toClear) delete after[fieldId];
+      for (const [fieldId, value] of toWrite) after[fieldId] = value;
+      const visible = new Set(
+        visibleFields(await expressionLevelOf(tx, found.levelId), { attributes: after, ratings: {} }).map((f) => f.id),
+      );
+      for (const [fieldId] of toWrite) if (!visible.has(fieldId)) throw errors.FIELD_HIDDEN({ data: { fieldId } });
+
+      await tx.attributeValue.deleteMany({ where: { itemId: found.id, fieldId: { in: toClear } } });
+      for (const [fieldId, value] of toWrite) {
+        await tx.attributeValue.upsert({
+          where: { itemId_fieldId: { itemId: found.id, fieldId } },
+          create: { itemId: found.id, fieldId, levelId: found.levelId, value },
+          update: { value },
+        });
+      }
+      return attributeValuesOf(tx, found.id);
+    });
   }),
 
   deletePreview: authed.item.deletePreview.handler(async ({ input, context, errors }) => {

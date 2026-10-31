@@ -1,4 +1,4 @@
-import type { CollectionDeletePreview, ItemDeletePreview } from "@repo/shared";
+import type { CollectionDeletePreview, FieldDeletePreview, ItemDeletePreview } from "@repo/shared";
 
 function count(n: number, singular: string, plural: string) {
   return `${n} ${n === 1 ? singular : plural}`;
@@ -27,4 +27,34 @@ export function describeItemDelete({ descendantCount, overallRatingCount }: Item
   const items = `${count(descendantCount, "Item", "Items")} inside it`;
   if (overallRatingCount === 0) return `This also deletes ${items}.`;
   return `This also deletes ${items} and ${ratings(overallRatingCount)}.`;
+}
+
+// What the user reads before confirming the delete of an Attribute, a Rating
+// field, or one choice option. While other fields' conditions use it, it can't
+// be deleted: they are named instead of the counts.
+export function describeFieldDelete(
+  { valueCount, dependentConditions }: FieldDeletePreview,
+  what: "attribute" | "rating" | "option",
+): string {
+  if (dependentConditions.length > 0) {
+    return `Other fields' conditions use it, so it can't be deleted yet: ${dependentConditions.map((c) => c.description).join("; ")}. Change or clear those conditions first.`;
+  }
+  let text: string;
+  if (what === "attribute") {
+    text =
+      valueCount === 0
+        ? "No Item has a value for it, so nothing else is deleted."
+        : `This also deletes its value on ${count(valueCount, "Item", "Items")}.`;
+  } else if (what === "rating") {
+    text =
+      valueCount === 0
+        ? "No Overall Rating has a value for it, so nothing else is deleted."
+        : `This also deletes its value in ${count(valueCount, "Overall Rating", "Overall Ratings")}, including other members' ratings. Overall Ratings left with nothing in them are removed too.`;
+  } else {
+    text =
+      valueCount === 0
+        ? "No Item uses this option, so nothing else changes."
+        : `This clears the option from ${count(valueCount, "Item", "Items")}. Their other choices stay.`;
+  }
+  return text;
 }

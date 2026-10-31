@@ -125,6 +125,7 @@ model Level {
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
   items               Item[]
+  fields              Field[]
 
   @@unique([collectionId, position])
   // Target of Item's composite foreign key, so the database itself checks
@@ -143,53 +144,138 @@ model Level {
 // Level positions never change once Items exist (only the deepest, empty
 // Level can be removed), so the copies can't go stale.
 model Item {
-  id                  String          @id @default(uuid(7))
+  id                  String           @id @default(uuid(7))
   collectionId        String
-  collection          Collection      @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  collection          Collection       @relation(fields: [collectionId], references: [id], onDelete: Cascade)
   levelId             String
   levelPosition       Int
   // NoAction (checked at the end of the statement) rather than Restrict, so
   // deleting a Collection can cascade to its Levels and Items together.
-  level               Level           @relation(fields: [levelId, collectionId, levelPosition], references: [id, collectionId, position], onDelete: NoAction)
+  level               Level            @relation(fields: [levelId, collectionId, levelPosition], references: [id, collectionId, position], onDelete: NoAction)
   parentId            String?
   parentLevelPosition Int?
-  parent              Item?           @relation("ItemChildren", fields: [parentId, collectionId, parentLevelPosition], references: [id, collectionId, levelPosition], onDelete: Cascade)
-  children            Item[]          @relation("ItemChildren")
+  parent              Item?            @relation("ItemChildren", fields: [parentId, collectionId, parentLevelPosition], references: [id, collectionId, levelPosition], onDelete: Cascade)
+  children            Item[]           @relation("ItemChildren")
   overallRatings      OverallRating[]
+  attributeValues     AttributeValue[]
   name                String
   // Items are listed by this. It defaults to creation order, so Episode 2
   // never comes before Episode 1; bulk creation of numbered children (a
   // later slice) relies on it.
-  sortKey             BigInt          @default(autoincrement())
-  createdAt           DateTime        @default(now())
-  updatedAt           DateTime        @updatedAt
+  sortKey             BigInt           @default(autoincrement())
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
 
   @@unique([id, collectionId, levelPosition])
+  // Target of AttributeValue's composite foreign key, so the database checks
+  // that a value sits on an Item at its Field's Level.
+  @@unique([id, levelId])
   @@index([collectionId, parentId, sortKey])
   @@index([parentId])
   @@index([levelId])
   @@map("item")
 }
 
-// A User's standing opinion of an Item (FR-2.6); in this slice only its
-// Verdict. One per (Item, User). The Verdict is stored as the raw value on the
-// Item's Level's Overall Verdict scale: verdictNumber for a numeric scale,
-// verdictLabel for a label scale, exactly one set (hand-written CHECK
-// overall_rating_verdict_check). The 0–1 form is always computed with
+// A User's standing opinion of an Item (FR-2.6): its Verdict and Rating field
+// values. One per (Item, User); it exists as soon as the Verdict or any Rating
+// field value is set, so the Verdict is optional. The Verdict is stored as the
+// raw value on the Item's Level's Overall Verdict scale: verdictNumber for a
+// numeric scale, verdictLabel for a label scale, at most one set (hand-written
+// CHECK overall_rating_verdict_check). The 0–1 form is always computed with
 // toUnitInterval from @repo/shared and never stored, so a rescale can't leave
 // stale copies.
 model OverallRating {
-  id            String   @id @default(uuid(7))
+  id            String               @id @default(uuid(7))
   itemId        String
-  item          Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  item          Item                 @relation(fields: [itemId], references: [id], onDelete: Cascade)
   userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   verdictNumber Float?
   verdictLabel  String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  values        OverallRatingValue[]
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
 
   @@unique([itemId, userId])
   @@index([userId])
   @@map("overall_rating")
+}
+
+// A User's value for one Rating field in their Overall Rating. Stored like the
+// Verdict, as the raw value on the Field's scale: valueNumber or valueLabel,
+// exactly one set (hand-written CHECK overall_rating_value_check). A cleared
+// value has no row. Values go with their Overall Rating and with their Field.
+// That the Field is a Rating field at the Item's Level is checked by
+// rating.setOverall.
+model OverallRatingValue {
+  id              String        @id @default(uuid(7))
+  overallRatingId String
+  overallRating   OverallRating @relation(fields: [overallRatingId], references: [id], onDelete: Cascade)
+  fieldId         String
+  field           Field         @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  valueNumber     Float?
+  valueLabel      String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([overallRatingId, fieldId])
+  @@index([fieldId])
+  @@map("overall_rating_value")
+}
+
+enum FieldKind {
+  attribute
+  rating
+
+  @@map("field_kind")
+}
+
+// A configurable field at a Level (FR-2.x). Positions run contiguously from 0
+// within a Level. `config` is an AttributeConfig from @repo/shared for an
+// attribute, parsed with its schema when read; the type is part of that
+// config, and is locked once any Item has a value (see field.updateConfig).
+// For a rating, `config` is its RatingScale, locked once any User has a value
+// (see field.updateScale).
+model Field {
+  id              String               @id @default(uuid(7))
+  levelId         String
+  level           Level                @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  kind            FieldKind
+  name            String
+  position        Int
+  config          Json
+  // The Expression from @repo/shared that decides whether the Field shows for
+  // an Item (a condition); null when it always shows.
+  condition       Json?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  attributeValues AttributeValue[]
+  ratingValues    OverallRatingValue[]
+
+  // Target of AttributeValue's composite foreign key.
+  @@unique([id, levelId])
+  @@index([levelId, position])
+  @@map("field")
+}
+
+// An Item's value for one Attribute. It belongs to the Item, not a User: every
+// Collection Member sees the same one. `value` is the JSON form of a
+// FieldValue from @repo/shared, never JSON null (a cleared value has no row;
+// hand-written CHECK attribute_value_not_null_check). levelId is a copy of
+// both the Item's and the Field's Level, which the two composite foreign keys
+// force to agree.
+model AttributeValue {
+  id        String   @id @default(uuid(7))
+  itemId    String
+  item      Item     @relation(fields: [itemId, levelId], references: [id, levelId], onDelete: Cascade)
+  fieldId   String
+  field     Field    @relation(fields: [fieldId, levelId], references: [id, levelId], onDelete: Cascade)
+  levelId   String
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([itemId, fieldId])
+  @@index([fieldId])
+  @@map("attribute_value")
 }

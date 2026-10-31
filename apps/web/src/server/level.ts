@@ -51,6 +51,14 @@ export async function lockLevelVerdict(tx: Prisma.TransactionClient, levelId: st
   }
 }
 
+// For writers of an Item's values (Attributes and ratings): the share lock on
+// the Level row also conflicts with field.setCondition's Level lock, so
+// visibility is judged against conditions that can't change before commit.
+// Take it before any Field lock, as everywhere that reads conditions.
+export async function lockLevelForValueWrite(tx: Prisma.TransactionClient, levelId: string) {
+  await lockLevelVerdict(tx, levelId, "share");
+}
+
 export const level = {
   rename: authed.level.rename.handler(async ({ input, context, errors }) => {
     const found = await findMemberLevel(prisma, input.id, context.user.id);
@@ -73,7 +81,11 @@ export const level = {
       const currentScale = overallVerdictScaleOf(current);
       const scaleChanges = input.scale !== undefined && !sameRatingScale(currentScale, input.scale);
       if (scaleChanges) {
-        const ratingCount = await tx.overallRating.count({ where: { item: { levelId: found.id } } });
+        // Only Overall Ratings with a Verdict: one with Rating field values
+        // alone has nothing on this scale.
+        const ratingCount = await tx.overallRating.count({
+          where: { item: { levelId: found.id }, OR: [{ verdictNumber: { not: null } }, { verdictLabel: { not: null } }] },
+        });
         if (ratingCount > 0) throw errors.SCALE_LOCKED({ data: { ratingCount } });
       }
       const row = await tx.level.update({
